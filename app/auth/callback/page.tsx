@@ -1,0 +1,53 @@
+"use client";
+
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+
+function AuthCallbackContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    async function run() {
+      const code = searchParams.get("code");
+      const supabase = createSupabaseBrowserClient();
+
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        router.replace("/login?error=auth");
+        return;
+      }
+
+      router.replace("/dashboard");
+    }
+
+    void run();
+  }, [router, searchParams]);
+
+  return (
+    <>
+      <h1>Completing sign-in</h1>
+      <p className="muted">Please wait...</p>
+    </>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <main>
+      <div className="card" style={{ maxWidth: 520, margin: "0 auto" }}>
+        <Suspense fallback={<p>Loading session...</p>}>
+          <AuthCallbackContent />
+        </Suspense>
+      </div>
+    </main>
+  );
+}
