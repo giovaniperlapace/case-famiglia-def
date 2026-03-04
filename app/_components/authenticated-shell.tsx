@@ -29,7 +29,7 @@ export default function AuthenticatedShell({
   children,
 }: AuthenticatedShellProps) {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const visibleItems = useMemo(
     () => NAV_ITEMS.filter((item) => (item.adminOnly ? role === "admin" : true)),
@@ -53,7 +53,7 @@ export default function AuthenticatedShell({
           style={{
             width: 260,
             alignSelf: "flex-start",
-            display: sidebarOpen ? "block" : undefined,
+            display: sidebarOpen ? "block" : "none",
           }}
         >
           <h2 style={{ marginTop: 0, marginBottom: 10 }}>Menu</h2>
