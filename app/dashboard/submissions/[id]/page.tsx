@@ -13,8 +13,10 @@ export default async function SubmissionDetailPage({
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
-    .from("submissions")
-    .select("id,tally_submission_id,owner_email,submitted_at_tally,normalized_data,raw_payload")
+    .from("case_alloggio_submissions")
+    .select(
+      "id,submission_id,owner_email,submitted_at,struttura,nome_della_persona,cognome,tipo_aggiornamento,mapped_answers,raw_payload"
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -31,12 +33,15 @@ export default async function SubmissionDetailPage({
       <p>
         <Link href="/dashboard">Back to dashboard</Link>
       </p>
-      <h1>Submission {data.tally_submission_id ?? data.id}</h1>
-      <p className="muted">Owner: {data.owner_email}</p>
+      <h1>Submission {data.submission_id ?? data.id}</h1>
+      <p className="muted">
+        Ospite: {`${data.nome_della_persona ?? ""} ${data.cognome ?? ""}`.trim() || "n/a"} |
+        Struttura: {data.struttura ?? "n/a"} | Aggiornamento: {data.tipo_aggiornamento ?? "n/a"}
+      </p>
       <div className="card" style={{ marginTop: "1rem" }}>
-        <h2>Normalized data</h2>
+        <h2>Mapped answers</h2>
         <pre style={{ overflowX: "auto" }}>
-          {JSON.stringify(data.normalized_data ?? {}, null, 2)}
+          {JSON.stringify(data.mapped_answers ?? {}, null, 2)}
         </pre>
       </div>
       <div className="card" style={{ marginTop: "1rem" }}>

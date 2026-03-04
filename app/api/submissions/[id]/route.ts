@@ -18,8 +18,10 @@ export async function GET(
   }
 
   const { data, error } = await supabase
-    .from("submissions")
-    .select("id,tally_submission_id,owner_email,submitted_at_tally,created_at,normalized_data,raw_payload")
+    .from("case_alloggio_submissions")
+    .select(
+      "id,submission_id,owner_email,submitted_at,created_at,struttura,nome_della_persona,cognome,tipo_aggiornamento,mapped_answers,raw_payload"
+    )
     .eq("id", id)
     .maybeSingle();
 

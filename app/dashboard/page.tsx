@@ -5,9 +5,12 @@ export const dynamic = "force-dynamic";
 
 type SubmissionRow = {
   id: string;
-  tally_submission_id: string | null;
-  owner_email: string;
-  submitted_at_tally: string | null;
+  submission_id: string | null;
+  submitted_at: string | null;
+  struttura: string | null;
+  nome_della_persona: string | null;
+  cognome: string | null;
+  tipo_aggiornamento: string | null;
 };
 
 export default async function DashboardPage() {
@@ -18,9 +21,9 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   const { data, error } = await supabase
-    .from("submissions")
-    .select("id,tally_submission_id,owner_email,submitted_at_tally")
-    .order("submitted_at_tally", { ascending: false });
+    .from("case_alloggio_submissions")
+    .select("id,submission_id,submitted_at,struttura,nome_della_persona,cognome,tipo_aggiornamento")
+    .order("submitted_at", { ascending: false });
 
   const rows = (data ?? []) as SubmissionRow[];
 
@@ -31,7 +34,7 @@ export default async function DashboardPage() {
 
       <div className="card" style={{ marginTop: "1rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-          <h2 style={{ margin: 0 }}>Your submissions</h2>
+          <h2 style={{ margin: 0 }}>Persone ospitate</h2>
           <form action="/auth/signout" method="post">
             <button type="submit">Sign out</button>
           </form>
@@ -52,10 +55,15 @@ export default async function DashboardPage() {
                 }}
               >
                 <Link href={`/dashboard/submissions/${row.id}`}>
-                  <strong>{row.tally_submission_id ?? row.id}</strong>
+                  <strong>
+                    {`${row.nome_della_persona ?? ""} ${row.cognome ?? ""}`.trim() ||
+                      row.submission_id ||
+                      row.id}
+                  </strong>
                 </Link>
                 <p className="muted" style={{ margin: "4px 0 0" }}>
-                  Submitted at: {row.submitted_at_tally ?? "n/a"}
+                  Struttura: {row.struttura ?? "n/a"} | Aggiornamento:{" "}
+                  {row.tipo_aggiornamento ?? "n/a"} | Inviato: {row.submitted_at ?? "n/a"}
                 </p>
               </li>
             ))}

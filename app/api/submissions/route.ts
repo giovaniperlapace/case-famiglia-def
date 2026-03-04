@@ -14,9 +14,9 @@ export async function GET() {
   }
 
   const { data, error } = await supabase
-    .from("submissions")
-    .select("id,tally_submission_id,owner_email,submitted_at_tally,created_at,normalized_data")
-    .order("submitted_at_tally", { ascending: false });
+    .from("case_alloggio_submissions")
+    .select("id,submission_id,owner_email,submitted_at,created_at,struttura,nome_della_persona,cognome,tipo_aggiornamento")
+    .order("submitted_at", { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
