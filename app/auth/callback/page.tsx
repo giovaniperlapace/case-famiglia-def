@@ -33,6 +33,12 @@ function AuthCallbackContent() {
           router.replace("/login?error=auth");
           return;
         }
+
+        // Avoid transient false negatives from an immediate getSession()
+        // right after successful code exchange.
+        const destination = explicitNextPath ?? (await resolveDefaultPostLoginPath());
+        router.replace(destination);
+        return;
       }
 
       const {
