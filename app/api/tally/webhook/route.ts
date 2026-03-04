@@ -131,37 +131,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Webhook ingestion failed" }, { status: 500 });
     }
 
-    const { error } = await supabase.from("submissions").upsert(
-      {
-        tally_submission_id: mapped.submissionId,
-        tally_respondent_id: mapped.respondentId || null,
-        owner_email: mapped.ownerEmail,
-        submitted_at_tally: mapped.submittedAt,
-        raw_payload: payload,
-        normalized_data: mapped.row,
-      },
-      {
-        onConflict: "tally_submission_id",
-      }
-    );
-
-    if (error) {
-      await logWebhookEvent({
-        source: "tally",
-        event_type: "form_submission",
-        submission_id: mapped.submissionId,
-        respondent_id: mapped.respondentId || null,
-        email: mapped.ownerEmail,
-        status: "error",
-        error_code: error.code ?? null,
-        error_message: error.message ?? "Insert failed",
-        payload,
-        normalized: mapped.row,
-      });
-
-      return NextResponse.json({ error: "Webhook ingestion failed" }, { status: 500 });
-    }
-
     await logWebhookEvent({
       source: "tally",
       event_type: "form_submission",
