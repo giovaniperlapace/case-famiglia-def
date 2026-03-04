@@ -4,7 +4,7 @@ export const CASE_ALLOGGIO_HEADER_TO_COLUMN = {
   "Submission ID": "submission_id",
   "Respondent ID": "respondent_id",
   "Submitted at": "submitted_at",
-  "Nome e cognome compilatore": "nome_compilatore",
+  "Nome e cognome compilatore": "nome_e_cognome_compilatore",
   "Cognome compilatore": "cognome_compilatore",
   "Contatto compilatore": "contatto_compilatore",
   Telefono: "telefono",

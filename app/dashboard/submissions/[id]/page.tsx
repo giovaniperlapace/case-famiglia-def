@@ -33,6 +33,9 @@ export default async function SubmissionDetailPage({
       <p>
         <Link href="/dashboard">Back to dashboard</Link>
       </p>
+      <p>
+        <Link href={`/dashboard/submissions/${data.id}/edit`}>Go to edit flow</Link>
+      </p>
       <h1>Submission {data.submission_id ?? data.id}</h1>
       <p className="muted">
         Ospite: {`${data.nome_della_persona ?? ""} ${data.cognome ?? ""}`.trim() || "n/a"} |
