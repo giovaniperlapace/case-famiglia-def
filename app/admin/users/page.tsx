@@ -9,6 +9,7 @@ type UserWithStructuresRow = {
   cognome: string | null;
   email: string;
   telefono: string | null;
+  ruolo: "admin" | "manager" | "responsabile_casa";
   app_utenti_strutture: { struttura: string }[] | null;
 };
 
@@ -17,7 +18,7 @@ export default async function AdminUsersPage() {
 
   const { data: usersData, error: usersError } = await supabase
     .from("app_utenti")
-    .select("id,nome,cognome,email,telefono,app_utenti_strutture(struttura)")
+    .select("id,nome,cognome,email,telefono,ruolo,app_utenti_strutture(struttura)")
     .order("cognome", { ascending: true, nullsFirst: false })
     .order("nome", { ascending: true, nullsFirst: false });
 
@@ -61,6 +62,7 @@ export default async function AdminUsersPage() {
     cognome: user.cognome,
     email: user.email,
     telefono: user.telefono,
+    ruolo: user.ruolo,
     strutture: (user.app_utenti_strutture ?? []).map((item) => item.struttura).sort(),
   }));
 

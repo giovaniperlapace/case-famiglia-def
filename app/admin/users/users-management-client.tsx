@@ -1,6 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+
+type AppRole = "admin" | "manager" | "responsabile_casa";
 
 type AdminUser = {
   id: string;
@@ -8,6 +10,7 @@ type AdminUser = {
   cognome: string | null;
   email: string;
   telefono: string | null;
+  ruolo: AppRole;
   strutture: string[];
 };
 
@@ -21,6 +24,7 @@ type FormState = {
   cognome: string;
   email: string;
   telefono: string;
+  ruolo: AppRole;
   strutture: string[];
 };
 
@@ -34,6 +38,7 @@ export default function UsersManagementClient({
   availableStructures,
 }: UsersManagementClientProps) {
   const [users, setUsers] = useState<AdminUser[]>(initialUsers);
+  const [editorMode, setEditorMode] = useState<"create" | "edit" | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -44,25 +49,38 @@ export default function UsersManagementClient({
   const firstFieldRef = useRef<HTMLInputElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  const editingUser = useMemo(
-    () => users.find((user) => user.id === editingUserId) ?? null,
-    [users, editingUserId]
-  );
-
   function openEditor(user: AdminUser) {
     previousFocusRef.current = document.activeElement as HTMLElement | null;
+    setEditorMode("edit");
     setEditingUserId(user.id);
     setForm({
       nome: user.nome ?? "",
       cognome: user.cognome ?? "",
       email: user.email ?? "",
       telefono: user.telefono ?? "",
+      ruolo: user.ruolo,
       strutture: [...user.strutture],
     });
     setFeedback(null);
   }
 
+  function openCreator() {
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    setEditorMode("create");
+    setEditingUserId(null);
+    setForm({
+      nome: "",
+      cognome: "",
+      email: "",
+      telefono: "",
+      ruolo: "responsabile_casa",
+      strutture: [],
+    });
+    setFeedback(null);
+  }
+
   function closeEditor() {
+    setEditorMode(null);
     setEditingUserId(null);
     setForm(null);
     setIsSaving(false);
@@ -72,7 +90,7 @@ export default function UsersManagementClient({
   }
 
   useEffect(() => {
-    if (!editingUserId) return;
+    if (!editorMode) return;
 
     const timer = window.setTimeout(() => {
       firstFieldRef.current?.focus();
@@ -90,7 +108,7 @@ export default function UsersManagementClient({
       window.clearTimeout(timer);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [editingUserId]);
+  }, [editorMode]);
 
   function toggleStructure(struttura: string) {
     if (!form) return;
@@ -104,7 +122,7 @@ export default function UsersManagementClient({
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!editingUserId || !form) return;
+    if (!editorMode || !form) return;
 
     const normalizedEmail = form.email.trim().toLowerCase();
     if (!normalizedEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail)) {
@@ -116,14 +134,24 @@ export default function UsersManagementClient({
     setFeedback(null);
 
     try {
-      const response = await fetch(`/api/admin/users/${editingUserId}`, {
-        method: "PATCH",
+      const isCreate = editorMode === "create";
+      if (!isCreate && !editingUserId) {
+        setFeedback({ type: "error", text: "Utente non valido per modifica." });
+        setIsSaving(false);
+        return;
+      }
+      const targetUrl = isCreate ? "/api/admin/users" : `/api/admin/users/${editingUserId}`;
+      const method = isCreate ? "POST" : "PATCH";
+
+      const response = await fetch(targetUrl, {
+        method,
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           nome: normalizeInput(form.nome),
           cognome: normalizeInput(form.cognome),
           email: normalizedEmail,
           telefono: normalizeInput(form.telefono),
+          ruolo: form.ruolo,
           strutture: form.strutture,
         }),
       });
@@ -146,9 +174,19 @@ export default function UsersManagementClient({
       }
 
       setUsers((current) =>
-        current.map((user) => (user.id === payload.user.id ? payload.user : user))
+        isCreate
+          ? [...current, payload.user].sort((a, b) =>
+              `${a.cognome ?? ""} ${a.nome ?? ""}`.localeCompare(
+                `${b.cognome ?? ""} ${b.nome ?? ""}`,
+                "it-IT"
+              )
+            )
+          : current.map((user) => (user.id === payload.user.id ? payload.user : user))
       );
-      setFeedback({ type: "success", text: "Utente aggiornato con successo." });
+      setFeedback({
+        type: "success",
+        text: isCreate ? "Utente creato con successo." : "Utente aggiornato con successo.",
+      });
       closeEditor();
     } catch {
       setFeedback({ type: "error", text: "Errore di rete durante il salvataggio." });
@@ -158,7 +196,12 @@ export default function UsersManagementClient({
 
   return (
     <div className="card">
-      <h2 style={{ marginTop: 0 }}>Users</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+        <h2 style={{ marginTop: 0, marginBottom: 0 }}>Users</h2>
+        <button type="button" onClick={openCreator}>
+          Nuovo utente
+        </button>
+      </div>
       <p className="muted" style={{ marginTop: 0 }}>
         Gestione utenti e assegnazioni case.
       </p>
@@ -189,6 +232,9 @@ export default function UsersManagementClient({
                   Phone
                 </th>
                 <th align="left" style={{ borderBottom: "1px solid var(--border)", padding: "0 0 10px" }}>
+                  Role
+                </th>
+                <th align="left" style={{ borderBottom: "1px solid var(--border)", padding: "0 0 10px" }}>
                   Houses
                 </th>
                 <th align="left" style={{ borderBottom: "1px solid var(--border)", padding: "0 0 10px" }}>
@@ -212,6 +258,9 @@ export default function UsersManagementClient({
                     {user.telefono ?? "—"}
                   </td>
                   <td style={{ borderBottom: "1px solid var(--border)", padding: "10px 0" }}>
+                    {user.ruolo}
+                  </td>
+                  <td style={{ borderBottom: "1px solid var(--border)", padding: "10px 0" }}>
                     {user.strutture.length > 0 ? user.strutture.join(", ") : "—"}
                   </td>
                   <td style={{ borderBottom: "1px solid var(--border)", padding: "10px 0" }}>
@@ -226,7 +275,7 @@ export default function UsersManagementClient({
         </div>
       ) : null}
 
-      {editingUser && form ? (
+      {editorMode && form ? (
         <div
           role="presentation"
           onClick={closeEditor}
@@ -255,7 +304,7 @@ export default function UsersManagementClient({
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 id="edit-user-title" style={{ margin: 0 }}>
-                Edit user
+                {editorMode === "create" ? "Nuovo utente" : "Edit user"}
               </h3>
               <button type="button" onClick={closeEditor}>
                 Close
@@ -328,6 +377,30 @@ export default function UsersManagementClient({
                   border: "1px solid var(--border)",
                 }}
               />
+
+              <label htmlFor="edit-ruolo">Ruolo</label>
+              <select
+                id="edit-ruolo"
+                value={form.ruolo}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    ruolo: event.target.value as AppRole,
+                  })
+                }
+                style={{
+                  width: "100%",
+                  marginTop: 8,
+                  marginBottom: 12,
+                  padding: 10,
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <option value="responsabile_casa">responsabile_casa</option>
+                <option value="manager">manager</option>
+                <option value="admin">admin</option>
+              </select>
 
               <fieldset
                 style={{

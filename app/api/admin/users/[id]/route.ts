@@ -6,6 +6,7 @@ type PatchBody = {
   cognome?: string | null;
   email?: string | null;
   telefono?: string | null;
+  ruolo?: "admin" | "manager" | "responsabile_casa" | null;
   strutture?: string[] | null;
 };
 
@@ -30,8 +31,12 @@ export async function PATCH(
   }
 
   const email = (body.email ?? "").trim().toLowerCase();
+  const ruolo = body.ruolo ?? "responsabile_casa";
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return NextResponse.json({ error: "Invalid email" }, { status: 400 });
+  }
+  if (!["admin", "manager", "responsabile_casa"].includes(ruolo)) {
+    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
 
   const strutture = Array.isArray(body.strutture)
@@ -46,6 +51,7 @@ export async function PATCH(
     target_cognome: body.cognome ?? null,
     target_email: email,
     target_telefono: body.telefono ?? null,
+    target_ruolo: ruolo,
     target_strutture: strutture,
   });
 
@@ -55,7 +61,7 @@ export async function PATCH(
 
   const { data: updatedUser, error: selectError } = await supabase
     .from("app_utenti")
-    .select("id,nome,cognome,email,telefono,app_utenti_strutture(struttura)")
+    .select("id,nome,cognome,email,telefono,ruolo,app_utenti_strutture(struttura)")
     .eq("id", id)
     .maybeSingle();
 
@@ -70,6 +76,7 @@ export async function PATCH(
       cognome: updatedUser.cognome,
       email: updatedUser.email,
       telefono: updatedUser.telefono,
+      ruolo: updatedUser.ruolo,
       strutture: (updatedUser.app_utenti_strutture ?? [])
         .map((item) => item.struttura)
         .sort((a, b) => a.localeCompare(b, "it-IT")),
