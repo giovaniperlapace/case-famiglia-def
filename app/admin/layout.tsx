@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { user, role } = await getServerAuthContext();
+  const { user, role, appUserId } = await getServerAuthContext();
   if (!user) {
     redirect("/login?next=/admin");
   }
@@ -17,7 +17,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <AuthenticatedShell email={user.email ?? null} role={role}>
+    <AuthenticatedShell email={user.email ?? null} role={role} userId={appUserId ?? user.id}>
       {children}
     </AuthenticatedShell>
   );

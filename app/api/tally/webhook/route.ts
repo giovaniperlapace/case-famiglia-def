@@ -105,6 +105,7 @@ export async function POST(req: Request) {
       .upsert(
         {
           ...mapped.row,
+          id_utente: mapped.row.id_utente ?? null,
           owner_email: mapped.ownerEmail,
           raw_payload: payload,
           mapped_answers: mapped.mappedAnswers,

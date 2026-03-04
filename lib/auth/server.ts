@@ -11,14 +11,35 @@ export async function getServerAuthContext() {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return { supabase, user: null, role: null as AppRole };
+    return { supabase, user: null, role: null as AppRole, appUserId: null as string | null };
   }
 
   const { data: role, error: roleError } = await supabase.rpc("current_user_role");
+  let appUserId: string | null = null;
 
-  if (roleError) {
-    return { supabase, user, role: null as AppRole };
+  const { data: byAuthUser } = await supabase
+    .from("app_utenti")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (byAuthUser?.id) {
+    appUserId = byAuthUser.id;
+  } else if (user.email) {
+    const { data: byEmailUser } = await supabase
+      .from("app_utenti")
+      .select("id")
+      .ilike("email", user.email)
+      .maybeSingle();
+
+    if (byEmailUser?.id) {
+      appUserId = byEmailUser.id;
+    }
   }
 
-  return { supabase, user, role: (role ?? null) as AppRole };
+  if (roleError) {
+    return { supabase, user, role: null as AppRole, appUserId };
+  }
+
+  return { supabase, user, role: (role ?? null) as AppRole, appUserId };
 }

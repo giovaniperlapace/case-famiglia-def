@@ -3,11 +3,13 @@ import crypto from "crypto";
 export type TallyPayload = Record<string, unknown> & {
   data?: {
     fields?: Array<Record<string, unknown>>;
+    hiddenFields?: unknown;
     submissionId?: unknown;
     respondentId?: unknown;
     createdAt?: unknown;
   };
   fields?: Array<Record<string, unknown>>;
+  hiddenFields?: unknown;
   submissionId?: unknown;
   respondentId?: unknown;
   createdAt?: unknown;

@@ -1,6 +1,7 @@
 import { extractTallyAnswers, normalizeText, type TallyPayload } from "@/lib/tally/webhook";
 
 export const CASE_ALLOGGIO_HEADER_TO_COLUMN = {
+  id_utente: "id_utente",
   "Submission ID": "submission_id",
   "Respondent ID": "respondent_id",
   "Submitted at": "submitted_at",
@@ -126,6 +127,39 @@ function toNullable(value: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+function extractHiddenUserId(
+  payload: TallyPayload,
+  answers: Record<string, string>
+): string | null {
+  const fromAnswers = toNullable(answers.id_utente);
+  if (fromAnswers) return fromAnswers;
+
+  const hiddenSources = [payload.data?.hiddenFields, payload.hiddenFields];
+
+  for (const hidden of hiddenSources) {
+    if (!hidden) continue;
+
+    if (Array.isArray(hidden)) {
+      for (const entry of hidden) {
+        if (!entry || typeof entry !== "object") continue;
+        const item = entry as Record<string, unknown>;
+        const key = normalizeText(item.key ?? item.name ?? item.label ?? item.id ?? "");
+        if (key === "id_utente") {
+          const value = toNullable(item.value ?? item.text);
+          if (value) return value;
+        }
+      }
+    }
+
+    if (typeof hidden === "object") {
+      const value = toNullable((hidden as Record<string, unknown>).id_utente);
+      if (value) return value;
+    }
+  }
+
+  return null;
+}
+
 export function mapCaseAlloggioSubmission(payload: TallyPayload) {
   const answers = extractTallyAnswers(payload);
   const answersByNormalizedHeader = new Map<string, string>();
@@ -156,6 +190,7 @@ export function mapCaseAlloggioSubmission(payload: TallyPayload) {
   row.submitted_at =
     row.submitted_at ??
     toNullable(payload.data?.createdAt ?? payload.createdAt);
+  row.id_utente = row.id_utente ?? extractHiddenUserId(payload, answers);
 
   const ownerEmail =
     normalizeEmail(row.contatto_compilatore) ??

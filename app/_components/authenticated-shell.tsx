@@ -20,16 +20,19 @@ const NAV_ITEMS: NavItem[] = [
 type AuthenticatedShellProps = {
   email: string | null;
   role: AppRole;
+  userId: string;
   children: React.ReactNode;
 };
 
 export default function AuthenticatedShell({
   email,
   role,
+  userId,
   children,
 }: AuthenticatedShellProps) {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const tallyNewRegistrationUrl = `https://tally.so/r/nW6KZe?id_utente=${encodeURIComponent(userId)}`;
 
   const visibleItems = useMemo(
     () => NAV_ITEMS.filter((item) => (item.adminOnly ? role === "admin" : true)),
@@ -39,12 +42,39 @@ export default function AuthenticatedShell({
   return (
     <main style={{ maxWidth: 1280, paddingTop: "1.25rem" }}>
       <div style={{ marginBottom: "0.85rem", display: "flex", justifyContent: "space-between", gap: 12 }}>
-        <button type="button" onClick={() => setSidebarOpen((open) => !open)}>
-          {sidebarOpen ? "Hide menu" : "Show menu"}
-        </button>
-        <p className="muted" style={{ margin: 0, alignSelf: "center" }}>
-          {email ?? "utente autenticato"}
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img
+            src="/branding/logo-santegidio.png"
+            alt="Logo Comunità di Sant'Egidio"
+            style={{ height: 28, width: "auto", objectFit: "contain" }}
+          />
+          <button type="button" onClick={() => setSidebarOpen((open) => !open)}>
+            {sidebarOpen ? "Hide menu" : "Show menu"}
+          </button>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <p className="muted" style={{ margin: 0, alignSelf: "center" }}>
+            {email ?? "utente autenticato"}
+          </p>
+          {role === "responsabile_casa" ? (
+            <Link
+              href={tallyNewRegistrationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                border: "1px solid #0f766e",
+                borderRadius: 8,
+                padding: "8px 10px",
+                fontWeight: 600,
+                textDecoration: "none",
+                background: "#0f766e",
+                color: "#ffffff",
+              }}
+            >
+              Nuova registrazione
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <div className="auth-shell">
