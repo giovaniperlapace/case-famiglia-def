@@ -4,6 +4,12 @@ import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
+function sanitizeNextPath(input: string | null): string {
+  if (!input || !input.startsWith("/")) return "/dashboard";
+  if (input.startsWith("//")) return "/dashboard";
+  return input;
+}
+
 function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -11,10 +17,15 @@ function AuthCallbackContent() {
   useEffect(() => {
     async function run() {
       const code = searchParams.get("code");
+      const nextPath = sanitizeNextPath(searchParams.get("next"));
       const supabase = createSupabaseBrowserClient();
 
       if (code) {
-        await supabase.auth.exchangeCodeForSession(code);
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          router.replace("/login?error=auth");
+          return;
+        }
       }
 
       const {
@@ -26,7 +37,7 @@ function AuthCallbackContent() {
         return;
       }
 
-      router.replace("/dashboard");
+      router.replace(nextPath);
     }
 
     void run();
