@@ -21,6 +21,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">(
     "idle"
   );
@@ -38,14 +39,17 @@ function LoginContent() {
       if (session?.user) {
         const destination = explicitNextPath ?? (await resolveDefaultPostLoginPath());
         router.replace(destination);
+        return;
       }
+
+      setIsCheckingSession(false);
     }
 
     void redirectIfAuthenticated();
   }, [explicitNextPath, router]);
 
   const authErrorMessage =
-    searchParams.get("error") === "auth"
+    !isCheckingSession && searchParams.get("error") === "auth"
       ? "Sessione non valida o scaduta. Richiedi un nuovo magic link."
       : null;
   const visibleMessage = message ?? authErrorMessage;

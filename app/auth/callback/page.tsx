@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -20,8 +20,12 @@ async function resolveDefaultPostLoginPath() {
 function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const hasStartedRef = useRef(false);
 
   useEffect(() => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
+
     async function run() {
       const code = searchParams.get("code");
       const explicitNextPath = sanitizeNextPath(searchParams.get("next"));
