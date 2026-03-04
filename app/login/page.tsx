@@ -4,10 +4,17 @@ import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-function sanitizeNextPath(input: string | null): string {
-  if (!input || !input.startsWith("/")) return "/dashboard";
-  if (input.startsWith("//")) return "/dashboard";
+function sanitizeNextPath(input: string | null): string | null {
+  if (!input) return null;
+  if (!input.startsWith("/")) return null;
+  if (input.startsWith("//")) return null;
   return input;
+}
+
+async function resolveDefaultPostLoginPath() {
+  const supabase = createSupabaseBrowserClient();
+  const { data: role } = await supabase.rpc("current_user_role");
+  return role === "admin" ? "/admin" : "/dashboard";
 }
 
 function LoginContent() {
@@ -18,7 +25,7 @@ function LoginContent() {
     "idle"
   );
   const [message, setMessage] = useState<string | null>(null);
-  const nextPath = sanitizeNextPath(
+  const explicitNextPath = sanitizeNextPath(
     searchParams.get("next") || searchParams.get("redirectedFrom")
   );
 
@@ -29,12 +36,13 @@ function LoginContent() {
         data: { session },
       } = await supabase.auth.getSession();
       if (session?.user) {
-        router.replace(nextPath);
+        const destination = explicitNextPath ?? (await resolveDefaultPostLoginPath());
+        router.replace(destination);
       }
     }
 
     void redirectIfAuthenticated();
-  }, [nextPath, router]);
+  }, [explicitNextPath, router]);
 
   const authErrorMessage =
     searchParams.get("error") === "auth"
@@ -54,10 +62,15 @@ function LoginContent() {
 
     try {
       const supabase = createSupabaseBrowserClient();
+      const callbackUrl = new URL("/auth/callback", appBaseUrl);
+      if (explicitNextPath) {
+        callbackUrl.searchParams.set("next", explicitNextPath);
+      }
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${appBaseUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+          emailRedirectTo: callbackUrl.toString(),
         },
       });
 

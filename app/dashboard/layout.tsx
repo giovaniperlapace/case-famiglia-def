@@ -4,16 +4,13 @@ import { getServerAuthContext } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminLayout({
+export default async function DashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { user, role } = await getServerAuthContext();
-  if (!user) {
-    redirect("/login?next=/admin");
-  }
 
-  if (role !== "admin") {
-    redirect("/dashboard");
+  if (!user) {
+    redirect("/login?next=/dashboard");
   }
 
   return (

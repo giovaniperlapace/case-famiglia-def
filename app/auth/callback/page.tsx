@@ -4,10 +4,17 @@ import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-function sanitizeNextPath(input: string | null): string {
-  if (!input || !input.startsWith("/")) return "/dashboard";
-  if (input.startsWith("//")) return "/dashboard";
+function sanitizeNextPath(input: string | null): string | null {
+  if (!input) return null;
+  if (!input.startsWith("/")) return null;
+  if (input.startsWith("//")) return null;
   return input;
+}
+
+async function resolveDefaultPostLoginPath() {
+  const supabase = createSupabaseBrowserClient();
+  const { data: role } = await supabase.rpc("current_user_role");
+  return role === "admin" ? "/admin" : "/dashboard";
 }
 
 function AuthCallbackContent() {
@@ -17,7 +24,7 @@ function AuthCallbackContent() {
   useEffect(() => {
     async function run() {
       const code = searchParams.get("code");
-      const nextPath = sanitizeNextPath(searchParams.get("next"));
+      const explicitNextPath = sanitizeNextPath(searchParams.get("next"));
       const supabase = createSupabaseBrowserClient();
 
       if (code) {
@@ -37,7 +44,8 @@ function AuthCallbackContent() {
         return;
       }
 
-      router.replace(nextPath);
+      const destination = explicitNextPath ?? (await resolveDefaultPostLoginPath());
+      router.replace(destination);
     }
 
     void run();

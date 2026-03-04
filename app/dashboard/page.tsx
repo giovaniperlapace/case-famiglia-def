@@ -44,10 +44,6 @@ function deriveGuestStatus(row: SubmissionRow) {
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
@@ -61,9 +57,8 @@ export default async function DashboardPage() {
   const deceasedCount = rows.filter((row) => deriveGuestStatus(row) === "Deceduto").length;
 
   return (
-    <main>
+    <>
       <h1>Persone ospitate</h1>
-      <p className="muted">Accesso: {user?.email ?? "utente autenticato"}</p>
 
       <div
         style={{
@@ -102,9 +97,6 @@ export default async function DashboardPage() {
       <div className="card" style={{ marginTop: "0.85rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
           <h2 style={{ margin: 0 }}>Elenco coordinatore</h2>
-          <form action="/auth/signout" method="post">
-            <button type="submit">Sign out</button>
-          </form>
         </div>
 
         {error ? <p style={{ color: "var(--danger)" }}>{error.message}</p> : null}
@@ -177,6 +169,6 @@ export default async function DashboardPage() {
           </div>
         ) : null}
       </div>
-    </main>
+    </>
   );
 }

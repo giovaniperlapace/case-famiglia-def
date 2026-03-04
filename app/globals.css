@@ -46,3 +46,20 @@ main {
 button {
   cursor: pointer;
 }
+
+.auth-shell {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+@media (max-width: 920px) {
+  .auth-shell {
+    flex-direction: column;
+  }
+
+  .auth-shell > aside {
+    width: 100% !important;
+    display: none;
+  }
+}
