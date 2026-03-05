@@ -91,6 +91,28 @@ const FILTER_INPUT_STYLE: CSSProperties = {
   fontSize: 13,
 };
 
+const TABLE_HEADER_BUTTON_STYLE: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  color: "inherit",
+  padding: 0,
+  boxShadow: "none",
+  borderRadius: 0,
+  fontWeight: 700,
+  fontSize: "inherit",
+};
+
+const TABLE_TOOL_BUTTON_STYLE: CSSProperties = {
+  border: "1px solid var(--border)",
+  background: "var(--panel)",
+  color: "var(--fg)",
+  borderRadius: 8,
+  padding: "0.45rem 0.65rem",
+  boxShadow: "none",
+  fontWeight: 600,
+  fontSize: "0.9rem",
+};
+
 export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("submitted_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -227,6 +249,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
         </p>
         <button
           type="button"
+          style={TABLE_TOOL_BUTTON_STYLE}
           onClick={() =>
             setFilters({
               guest: "",
@@ -246,27 +269,27 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
           <thead>
             <tr>
               <th align="left" style={HEADER_CELL_STYLE}>
-                <button type="button" onClick={() => setSort("guest")}>
+                <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort("guest")}>
                   Ospite {sortArrow("guest")}
                 </button>
               </th>
               <th align="left" style={HEADER_CELL_STYLE}>
-                <button type="button" onClick={() => setSort("struttura")}>
+                <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort("struttura")}>
                   Struttura {sortArrow("struttura")}
                 </button>
               </th>
               <th align="left" style={HEADER_CELL_STYLE}>
-                <button type="button" onClick={() => setSort("stato")}>
+                <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort("stato")}>
                   Stato {sortArrow("stato")}
                 </button>
               </th>
               <th align="left" style={HEADER_CELL_STYLE}>
-                <button type="button" onClick={() => setSort("submitted_at")}>
+                <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort("submitted_at")}>
                   Inviato {sortArrow("submitted_at")}
                 </button>
               </th>
               <th align="left" style={HEADER_CELL_STYLE}>
-                <button type="button" onClick={() => setSort("updated_at")}>
+                <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort("updated_at")}>
                   Ultima modifica {sortArrow("updated_at")}
                 </button>
               </th>
