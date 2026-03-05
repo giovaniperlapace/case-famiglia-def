@@ -123,7 +123,7 @@ export async function POST(req: Request) {
   }
 
   const mapped = mapCaseAlloggioSubmission(payload);
-  if (!mapped.ownerEmail || !mapped.submissionId) {
+  if (!mapped.submissionId) {
     await logWebhookEvent({
       source: "tally",
       event_type: "form_submission",
@@ -132,13 +132,13 @@ export async function POST(req: Request) {
       email: mapped.ownerEmail || null,
       status: "rejected_missing_fields",
       error_code: "400",
-      error_message: "Missing required fields (submission_id, contatto email)",
+      error_message: "Missing required field (submission_id)",
       payload,
       normalized: mapped.row,
     });
 
     return NextResponse.json(
-      { error: "Missing required fields (submission_id, contatto email)" },
+      { error: "Missing required field (submission_id)" },
       { status: 400 }
     );
   }
@@ -147,7 +147,7 @@ export async function POST(req: Request) {
     const baseRow = {
       ...mapped.row,
       id_utente: mapped.row.id_utente ?? null,
-      owner_email: mapped.ownerEmail,
+      owner_email: mapped.ownerEmail ?? null,
       raw_payload: payload,
       mapped_answers: mapped.mappedAnswers,
     };
