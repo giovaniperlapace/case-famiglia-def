@@ -20,6 +20,52 @@ type WebhookLog = {
   normalized: unknown;
 };
 
+type UpsertAttemptResult = {
+  error: { code?: string | null; message?: string | null } | null;
+  droppedColumns: string[];
+};
+
+function extractMissingColumnName(message: string | null | undefined): string | null {
+  if (!message) return null;
+  const match = message.match(/'([^']+)' column of 'case_alloggio_submissions'/);
+  return match?.[1] ?? null;
+}
+
+async function upsertCaseAlloggioWithSchemaFallback(
+  payload: Record<string, unknown>
+): Promise<UpsertAttemptResult> {
+  const supabase = createSupabaseServiceClient();
+  const row = { ...payload };
+  const droppedColumns: string[] = [];
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const { error } = await supabase
+      .from("case_alloggio_submissions")
+      .upsert(row, { onConflict: "submission_id" });
+
+    if (!error) {
+      return { error: null, droppedColumns };
+    }
+
+    if (error.code !== "PGRST204") {
+      return { error: { code: error.code ?? null, message: error.message ?? null }, droppedColumns };
+    }
+
+    const missingColumn = extractMissingColumnName(error.message);
+    if (!missingColumn || !(missingColumn in row)) {
+      return { error: { code: error.code ?? null, message: error.message ?? null }, droppedColumns };
+    }
+
+    delete row[missingColumn];
+    droppedColumns.push(missingColumn);
+  }
+
+  return {
+    error: { code: "PGRST204", message: "Exceeded schema fallback retries for webhook upsert" },
+    droppedColumns,
+  };
+}
+
 async function logWebhookEvent(entry: WebhookLog) {
   try {
     const supabase = createSupabaseServiceClient();
@@ -98,22 +144,52 @@ export async function POST(req: Request) {
   }
 
   try {
-    const supabase = createSupabaseServiceClient();
+    const baseRow = {
+      ...mapped.row,
+      id_utente: mapped.row.id_utente ?? null,
+      owner_email: mapped.ownerEmail,
+      raw_payload: payload,
+      mapped_answers: mapped.mappedAnswers,
+    };
 
-    const { error: caseAlloggioError } = await supabase
-      .from("case_alloggio_submissions")
-      .upsert(
-        {
-          ...mapped.row,
-          id_utente: mapped.row.id_utente ?? null,
-          owner_email: mapped.ownerEmail,
-          raw_payload: payload,
-          mapped_answers: mapped.mappedAnswers,
-        },
-        {
-          onConflict: "submission_id",
-        }
-      );
+    const primaryUpsert = await upsertCaseAlloggioWithSchemaFallback(baseRow);
+    const caseAlloggioError = primaryUpsert.error;
+
+    if (
+      caseAlloggioError?.code === "23503" &&
+      (caseAlloggioError.message ?? "").includes("case_alloggio_submissions_id_utente_fkey")
+    ) {
+      const fallbackUpsert = await upsertCaseAlloggioWithSchemaFallback({
+        ...baseRow,
+        id_utente: null,
+      });
+      const fallbackError = fallbackUpsert.error;
+
+      if (!fallbackError) {
+        await logWebhookEvent({
+          source: "tally",
+          event_type: "form_submission",
+          submission_id: mapped.submissionId,
+          respondent_id: mapped.respondentId || null,
+          email: mapped.ownerEmail,
+          status: "success_id_utente_fallback",
+          error_code: caseAlloggioError.code ?? null,
+          error_message: caseAlloggioError.message ?? null,
+          payload,
+          normalized: {
+            ...mapped.row,
+            id_utente: null,
+            _dropped_columns: fallbackUpsert.droppedColumns,
+          },
+        });
+
+        return NextResponse.json({
+          ok: true,
+          duplicate_safe: true,
+          id_utente_fallback: true,
+        });
+      }
+    }
 
     if (caseAlloggioError) {
       await logWebhookEvent({
@@ -126,7 +202,10 @@ export async function POST(req: Request) {
         error_code: caseAlloggioError.code ?? null,
         error_message: caseAlloggioError.message ?? "Insert failed",
         payload,
-        normalized: mapped.row,
+        normalized: {
+          ...mapped.row,
+          _dropped_columns: primaryUpsert.droppedColumns,
+        },
       });
 
       return NextResponse.json({ error: "Webhook ingestion failed" }, { status: 500 });
@@ -142,7 +221,10 @@ export async function POST(req: Request) {
       error_code: null,
       error_message: null,
       payload,
-      normalized: mapped.row,
+      normalized: {
+        ...mapped.row,
+        _dropped_columns: primaryUpsert.droppedColumns,
+      },
     });
 
     return NextResponse.json({ ok: true, duplicate_safe: true });
