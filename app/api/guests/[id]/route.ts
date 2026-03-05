@@ -16,15 +16,23 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { error: deleteError } = await supabase
+  const { data: deletedRows, error: deleteError } = await supabase
     .from("case_alloggio_submissions")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
 
   if (deleteError) {
     const lowered = deleteError.message.toLowerCase();
     const status = lowered.includes("forbidden") || lowered.includes("permission denied") ? 403 : 400;
     return NextResponse.json({ error: deleteError.message }, { status });
+  }
+
+  if (!deletedRows || deletedRows.length === 0) {
+    return NextResponse.json(
+      { error: "Record non eliminato: permessi insufficienti o record inesistente." },
+      { status: 403 }
+    );
   }
 
   return NextResponse.json({ ok: true });
