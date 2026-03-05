@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, Suspense, useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -94,8 +95,15 @@ function LoginContent() {
 
   return (
     <>
-      <h1>Accedi</h1>
-      <p className="muted">Inserisci la tua email per ricevere un link di accesso.</p>
+      <h2 style={{ marginTop: 0 }}>Accedi</h2>
+      <p className="muted">
+        <strong style={{ color: "var(--fg)" }}>
+          Inserisci la tua email per ricevere un link di accesso.
+        </strong>
+        <br />
+        Verifica anche la cartella spam se il link non arriva. In caso di problemi con
+        l&apos;accesso, scrivi a accoglienzesantegidio@gmail.com.
+      </p>
       <form onSubmit={handleSubmit} style={{ marginTop: "1rem" }}>
         <label htmlFor="email">Email</label>
         <input
@@ -144,6 +152,26 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <main>
+      <header
+        className="card"
+        style={{
+          maxWidth: 520,
+          margin: "0 auto 1rem",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <Image
+          src="/branding/logo-santegidio.png"
+          alt="Logo Comunità di Sant'Egidio"
+          width={42}
+          height={42}
+          style={{ width: "auto", height: "auto" }}
+          priority
+        />
+        <h1 style={{ margin: 0, fontSize: "1.25rem" }}>Accoglienze Comunità di Sant&apos;Egidio</h1>
+      </header>
       <div className="card" style={{ maxWidth: 520, margin: "0 auto" }}>
         <Suspense fallback={<p>Loading...</p>}>
           <LoginContent />
