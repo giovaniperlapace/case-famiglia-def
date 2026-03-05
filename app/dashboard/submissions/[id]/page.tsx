@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getGuestTimeline } from "@/lib/guests/server";
 import { GUEST_STATUS_LABEL } from "@/lib/guests/schema";
 import { getCurrentStatus } from "@/lib/guests/status";
+import DeleteGuestButton from "./delete-guest-button";
 
 export const dynamic = "force-dynamic";
 
@@ -261,19 +262,33 @@ export default async function SubmissionDetailPage({
         Ospite: {guestName || "n/d"} | Struttura: {row.struttura ?? "n/d"} | Scheda:{" "}
         {row.submission_id ?? row.id} | Stato: {GUEST_STATUS_LABEL[currentStatus]}
       </p>
-      <div style={{ marginTop: "0.75rem", display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Link href={`/dashboard/submissions/${row.id}/edit`}>
-          <button type="button">Modifica i dati</button>
-        </Link>
-        {currentStatus === "DECEDUTO" ? (
-          <button type="button" disabled title="Guest deceduto: status update non disponibile.">
-            Aggiorna lo stato
-          </button>
-        ) : (
-          <Link href={`/dashboard/submissions/${row.id}/status-update`}>
-            <button type="button">Aggiorna lo stato</button>
+      <div
+        style={{
+          marginTop: "0.75rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link href={`/dashboard/submissions/${row.id}/edit`}>
+            <button type="button">Modifica i dati</button>
           </Link>
-        )}
+          {currentStatus === "DECEDUTO" ? (
+            <button type="button" disabled title="Guest deceduto: status update non disponibile.">
+              Aggiorna lo stato
+            </button>
+          ) : (
+            <Link href={`/dashboard/submissions/${row.id}/status-update`}>
+              <button type="button">Aggiorna lo stato</button>
+            </Link>
+          )}
+        </div>
+        <div style={{ marginLeft: "auto" }}>
+          <DeleteGuestButton guestId={row.id} />
+        </div>
       </div>
 
       <Section title="Dati personali" data={row} fields={PERSONAL_FIELDS} />
