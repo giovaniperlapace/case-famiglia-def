@@ -8,13 +8,13 @@ import type { AppRole } from "@/lib/auth/server";
 type NavItem = {
   href: string;
   label: string;
-  adminOnly?: boolean;
+  visibleFor?: AppRole[];
 };
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/admin/users", label: "Users", adminOnly: true },
-  { href: "/admin/statistics", label: "Statistics", adminOnly: true },
+  { href: "/admin/users", label: "Users", visibleFor: ["admin"] },
+  { href: "/admin/statistics", label: "Statistiche", visibleFor: ["admin", "manager"] },
 ];
 
 type AuthenticatedShellProps = {
@@ -35,7 +35,7 @@ export default function AuthenticatedShell({
   const tallyNewRegistrationUrl = `https://tally.so/r/nW6KZe?id_utente=${encodeURIComponent(userId)}`;
 
   const visibleItems = useMemo(
-    () => NAV_ITEMS.filter((item) => (item.adminOnly ? role === "admin" : true)),
+    () => NAV_ITEMS.filter((item) => !item.visibleFor || item.visibleFor.includes(role)),
     [role]
   );
 

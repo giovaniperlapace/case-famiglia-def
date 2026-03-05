@@ -12,7 +12,7 @@ export default async function AdminLayout({
     redirect("/login?next=/admin");
   }
 
-  if (role !== "admin") {
+  if (role !== "admin" && role !== "manager") {
     redirect("/dashboard");
   }
 

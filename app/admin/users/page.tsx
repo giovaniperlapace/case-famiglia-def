@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getServerAuthContext } from "@/lib/auth/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import UsersManagementClient from "./users-management-client";
 
@@ -14,6 +16,15 @@ type UserWithStructuresRow = {
 };
 
 export default async function AdminUsersPage() {
+  const { user, role } = await getServerAuthContext();
+  if (!user) {
+    redirect("/login?next=/admin/users");
+  }
+
+  if (role !== "admin") {
+    redirect("/admin/statistics");
+  }
+
   const supabase = await createSupabaseServerClient();
 
   const { data: usersData, error: usersError } = await supabase
