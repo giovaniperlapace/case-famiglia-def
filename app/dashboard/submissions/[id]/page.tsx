@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getGuestTimeline } from "@/lib/guests/server";
+import { GUEST_STATUS_LABEL } from "@/lib/guests/schema";
+import { getCurrentStatus } from "@/lib/guests/status";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +11,8 @@ type SubmissionDetailRow = {
   id: string;
   submission_id: string | null;
   submitted_at: string | null;
+  current_status: string | null;
+  current_status_at: string | null;
   struttura: string | null;
   nome_della_persona: string | null;
   cognome: string | null;
@@ -225,7 +230,7 @@ export default async function SubmissionDetailPage({
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
-      "id,submission_id,submitted_at,struttura,nome_della_persona,cognome,data_di_nascita,luogo_di_nascita,sesso_della_persona,nazionalita,contatto_della_persona,data_ingresso,e_gia_stato_in_un_accoglienza_della_comunita,al_momento_dell_ingresso_ha_un_reddito,tipo_di_reddito,tipo_di_reddito_pensione,tipo_di_reddito_invalidita,tipo_di_reddito_reddito_di_inclusione,tipo_di_reddito_reddito_da_lavoro,tipo_di_lavoro,al_momento_dell_ingresso_ha_residenza,dove_dormiva,principale_causa_poverta,data_uscita,causa_uscita,data_decesso,causa_decesso,al_momento_dell_uscita_ha_residenza,al_momento_dell_uscita_ha_un_reddito,tipo_di_reddito_2,tipo_di_reddito_pensione_2,tipo_di_reddito_invalidita_2,tipo_di_reddito_reddito_di_inclusione_2,tipo_di_reddito_reddito_da_lavoro_2,tipo_di_lavoro_2,data_ultimo_contatto,dove_dorme,data_decesso_2,causa_decesso_2,dipendenze,dipendenze_alcolismo,dipendenze_sostanze,dipendenze_ludopatia,dipendenze_nessuna,patologie,patologie_malattie_infettive_e_parassitarie,patologie_neoplasie_tumori,patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123,patologie_malattie_endocrine_nutrizionali_e_metaboliche,patologie_disturbi_psichici_e_comportamentali,patologie_malattie_del_sistema_nervoso,patologie_malattie_dell_occhio_e_degli_annessi_oculari,patologie_malattie_dell_orecchio_e_del_processo_mastoideo,patologie_malattie_del_sistema_circolatorio,patologie_malattie_del_sistema_respiratorio,patologie_malattie_dell_apparato_digerente,patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo,patologie_malattie_del_sistema_muscoloscheletrico_e_del_55e101,patologie_malattie_dell_apparato_genito_urinario,patologie_malformazioni_congenite_deformita_e_anomalie_c_84cf9a,patologie_traumi_avvelenamenti_e_alcune_altre_conseguenz_85ac11,patologie_nessuna,patologie_altro,patologia_psichiatrica"
+      "id,submission_id,submitted_at,current_status,current_status_at,struttura,nome_della_persona,cognome,data_di_nascita,luogo_di_nascita,sesso_della_persona,nazionalita,contatto_della_persona,data_ingresso,e_gia_stato_in_un_accoglienza_della_comunita,al_momento_dell_ingresso_ha_un_reddito,tipo_di_reddito,tipo_di_reddito_pensione,tipo_di_reddito_invalidita,tipo_di_reddito_reddito_di_inclusione,tipo_di_reddito_reddito_da_lavoro,tipo_di_lavoro,al_momento_dell_ingresso_ha_residenza,dove_dormiva,principale_causa_poverta,data_uscita,causa_uscita,data_decesso,causa_decesso,al_momento_dell_uscita_ha_residenza,al_momento_dell_uscita_ha_un_reddito,tipo_di_reddito_2,tipo_di_reddito_pensione_2,tipo_di_reddito_invalidita_2,tipo_di_reddito_reddito_di_inclusione_2,tipo_di_reddito_reddito_da_lavoro_2,tipo_di_lavoro_2,data_ultimo_contatto,dove_dorme,data_decesso_2,causa_decesso_2,dipendenze,dipendenze_alcolismo,dipendenze_sostanze,dipendenze_ludopatia,dipendenze_nessuna,patologie,patologie_malattie_infettive_e_parassitarie,patologie_neoplasie_tumori,patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123,patologie_malattie_endocrine_nutrizionali_e_metaboliche,patologie_disturbi_psichici_e_comportamentali,patologie_malattie_del_sistema_nervoso,patologie_malattie_dell_occhio_e_degli_annessi_oculari,patologie_malattie_dell_orecchio_e_del_processo_mastoideo,patologie_malattie_del_sistema_circolatorio,patologie_malattie_del_sistema_respiratorio,patologie_malattie_dell_apparato_digerente,patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo,patologie_malattie_del_sistema_muscoloscheletrico_e_del_55e101,patologie_malattie_dell_apparato_genito_urinario,patologie_malformazioni_congenite_deformita_e_anomalie_c_84cf9a,patologie_traumi_avvelenamenti_e_alcune_altre_conseguenz_85ac11,patologie_nessuna,patologie_altro,patologia_psichiatrica"
     )
     .eq("id", id)
     .maybeSingle();
@@ -240,21 +245,36 @@ export default async function SubmissionDetailPage({
 
   const row = data as SubmissionDetailRow;
   const guestName = `${row.nome_della_persona ?? ""} ${row.cognome ?? ""}`.trim();
+  const currentStatus = getCurrentStatus(row);
+  const timeline = await getGuestTimeline(supabase, row.id);
   const showUscitaSection = Boolean(row.data_uscita && row.data_uscita.trim());
 
   return (
     <main>
       <p>
-        <Link href="/dashboard">Back to dashboard</Link>
-      </p>
-      <p>
-        <Link href={`/dashboard/submissions/${row.id}/edit`}>Go to edit flow</Link>
+        <Link href="/dashboard" aria-label="Torna alla dashboard" title="Torna alla dashboard">
+          ← Dashboard
+        </Link>
       </p>
       <h1>Scheda ospite</h1>
       <p className="muted">
         Ospite: {guestName || "n/d"} | Struttura: {row.struttura ?? "n/d"} | Scheda:{" "}
-        {row.submission_id ?? row.id}
+        {row.submission_id ?? row.id} | Stato: {GUEST_STATUS_LABEL[currentStatus]}
       </p>
+      <div style={{ marginTop: "0.75rem", display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Link href={`/dashboard/submissions/${row.id}/edit`}>
+          <button type="button">Modifica i dati</button>
+        </Link>
+        {currentStatus === "DECEDUTO" ? (
+          <button type="button" disabled title="Guest deceduto: status update non disponibile.">
+            Aggiorna lo stato
+          </button>
+        ) : (
+          <Link href={`/dashboard/submissions/${row.id}/status-update`}>
+            <button type="button">Aggiorna lo stato</button>
+          </Link>
+        )}
+      </div>
 
       <Section title="Dati personali" data={row} fields={PERSONAL_FIELDS} />
       <Section title="Situazione all'ingresso" data={row} fields={INGRESSO_FIELDS} />
@@ -265,6 +285,48 @@ export default async function SubmissionDetailPage({
 
       <Section title="Dipendenze" data={row} fields={DIPENDENZE_FIELDS} />
       <Section title="Patologie" data={row} fields={PATOLOGIE_FIELDS} />
+
+      <div className="card" style={{ marginTop: "1rem" }}>
+        <h2 style={{ marginTop: 0 }}>History / Timeline</h2>
+        {timeline.length === 0 ? (
+          <p className="muted" style={{ marginBottom: 0 }}>
+            Nessun evento registrato.
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {timeline.map((event) => {
+              const transition =
+                event.to_status && event.from_status !== event.to_status
+                  ? `${event.from_status ?? "n/d"} -> ${event.to_status}`
+                  : event.from_status ?? event.to_status ?? "n/d";
+              const payload = event.payload ?? {};
+              const summary =
+                (payload.causa_uscita as string | undefined) ||
+                (payload.causa_decesso as string | undefined) ||
+                (payload.note as string | undefined) ||
+                "Nessun dettaglio sintetico";
+
+              return (
+                <div key={event.id} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
+                  <p style={{ margin: 0, fontWeight: 700 }}>
+                    {event.event_type} | {transition}
+                  </p>
+                  <p className="muted" style={{ margin: "4px 0 0" }}>
+                    Data evento: {event.effective_date ?? "n/d"} | Creato: {event.created_at}
+                  </p>
+                  <p style={{ margin: "6px 0 0" }}>{summary}</p>
+                  <details style={{ marginTop: 6 }}>
+                    <summary style={{ cursor: "pointer" }}>View details</summary>
+                    <pre style={{ margin: "8px 0 0", overflowX: "auto" }}>
+                      {JSON.stringify(payload, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </main>
   );
 }

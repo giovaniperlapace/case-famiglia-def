@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import { getCurrentStatus } from "@/lib/guests/status";
 
 export type SubmissionRow = {
   id: string;
   submission_id: string | null;
   submitted_at: string | null;
   updated_at: string;
+  current_status: string | null;
   struttura: string | null;
   nome_della_persona: string | null;
   cognome: string | null;
@@ -57,11 +59,9 @@ function formatDateTime(value: string | null) {
 }
 
 function deriveGuestStatus(row: SubmissionRow) {
-  if (row.data_decesso || row.data_decesso_2) return "Deceduto";
-  if (row.data_uscita) return "Uscito";
-  const updateType = (row.tipo_aggiornamento ?? "").toLowerCase();
-  if (updateType.includes("decesso")) return "Deceduto";
-  if (updateType.includes("uscita")) return "Uscito";
+  const status = getCurrentStatus(row);
+  if (status === "DECEDUTO") return "Deceduto";
+  if (status === "USCITO") return "Uscito";
   return "In accoglienza";
 }
 

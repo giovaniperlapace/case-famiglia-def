@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import EditDataClient from "./edit-data-client";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,9 @@ export default async function SubmissionEditPage({
 
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
-    .select("id,submission_id,nome_della_persona,cognome,struttura,tipo_aggiornamento,updated_at")
+    .select(
+      "id,submission_id,nome_della_persona,cognome,data_di_nascita,luogo_di_nascita,sesso_della_persona,nazionalita,contatto_della_persona,struttura,updated_at"
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -33,20 +36,23 @@ export default async function SubmissionEditPage({
       <p>
         <Link href={`/dashboard/submissions/${data.id}`}>Back to detail</Link>
       </p>
-      <h1>Modifica scheda</h1>
+      <h1>Edit data</h1>
       <p className="muted">
         Ospite: {guestName || "n/d"} | Struttura: {data.struttura ?? "n/d"} | Ultima modifica:{" "}
         {data.updated_at ?? "n/d"}
       </p>
-      <div className="card" style={{ marginTop: "1rem" }}>
-        <p style={{ marginTop: 0 }}>
-          Flusso di modifica in costruzione. Questa pagina e il percorso URL sono pronti per il
-          prossimo step di editing server-side con RLS.
-        </p>
-        <p className="muted" style={{ marginBottom: 0 }}>
-          Riferimento scheda: {data.submission_id ?? data.id}
-        </p>
-      </div>
+      <EditDataClient
+        guestId={data.id}
+        initialValues={{
+          nome_della_persona: data.nome_della_persona,
+          cognome: data.cognome,
+          data_di_nascita: data.data_di_nascita,
+          luogo_di_nascita: data.luogo_di_nascita,
+          sesso_della_persona: data.sesso_della_persona,
+          nazionalita: data.nazionalita,
+          contatto_della_persona: data.contatto_della_persona,
+        }}
+      />
     </main>
   );
 }

@@ -49,7 +49,7 @@ export default function AuthenticatedShell({
             style={{ height: 28, width: "auto", objectFit: "contain" }}
           />
           <button type="button" onClick={() => setSidebarOpen((open) => !open)}>
-            {sidebarOpen ? "Hide menu" : "Show menu"}
+            Menù
           </button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>

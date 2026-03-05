@@ -1,16 +1,13 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import DashboardTableClient, { type SubmissionRow } from "./dashboard-table-client";
+import { getCurrentStatus } from "@/lib/guests/status";
 
 export const dynamic = "force-dynamic";
 
 function deriveGuestStatus(row: SubmissionRow) {
-  if (row.data_decesso || row.data_decesso_2) return "Deceduto";
-  if (row.data_uscita) return "Uscito";
-
-  const updateType = (row.tipo_aggiornamento ?? "").toLowerCase();
-  if (updateType.includes("decesso")) return "Deceduto";
-  if (updateType.includes("uscita")) return "Uscito";
-
+  const status = getCurrentStatus(row);
+  if (status === "DECEDUTO") return "Deceduto";
+  if (status === "USCITO") return "Uscito";
   return "In accoglienza";
 }
 
@@ -20,7 +17,7 @@ export default async function DashboardPage() {
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
-      "id,submission_id,submitted_at,updated_at,struttura,nome_della_persona,cognome,tipo_aggiornamento,data_uscita,data_decesso,data_decesso_2"
+      "id,submission_id,submitted_at,updated_at,current_status,struttura,nome_della_persona,cognome,tipo_aggiornamento,data_uscita,data_decesso,data_decesso_2"
     )
     .order("submitted_at", { ascending: false });
 

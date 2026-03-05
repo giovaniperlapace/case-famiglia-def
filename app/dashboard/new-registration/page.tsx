@@ -23,7 +23,9 @@ export default async function NewRegistrationPage() {
   return (
     <main>
       <p>
-        <Link href="/dashboard">Back to dashboard</Link>
+        <Link href="/dashboard" aria-label="Torna alla dashboard" title="Torna alla dashboard">
+          ← Dashboard
+        </Link>
       </p>
       <h1>Verifica nuova registrazione</h1>
       <NewRegistrationClient tallyUrl={tallyUrl} />
