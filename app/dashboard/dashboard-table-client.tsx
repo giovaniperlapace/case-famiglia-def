@@ -22,7 +22,6 @@ type SortKey =
   | "guest"
   | "struttura"
   | "stato"
-  | "tipo_aggiornamento"
   | "submitted_at"
   | "updated_at";
 
@@ -32,7 +31,6 @@ type Filters = {
   guest: string;
   strutture: string[];
   stato: string;
-  tipo_aggiornamento: string;
   submitted_at: string;
   updated_at: string;
 };
@@ -42,7 +40,6 @@ type RowView = {
   guest: string;
   struttura: string;
   stato: string;
-  tipoAggiornamento: string;
   submittedAtLabel: string;
   updatedAtLabel: string;
   submittedAtTs: number;
@@ -101,7 +98,6 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
     guest: "",
     strutture: [],
     stato: "",
-    tipo_aggiornamento: "",
     submitted_at: "",
     updated_at: "",
   });
@@ -128,7 +124,6 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
           guest,
           struttura: row.struttura ?? "n/d",
           stato: deriveGuestStatus(row),
-          tipoAggiornamento: row.tipo_aggiornamento ?? "n/d",
           submittedAtLabel,
           updatedAtLabel,
           submittedAtTs: toTimestamp(row.submitted_at),
@@ -153,14 +148,6 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
         return false;
       }
       if (filters.stato && item.stato !== filters.stato) {
-        return false;
-      }
-      if (
-        filters.tipo_aggiornamento &&
-        !item.tipoAggiornamento
-          .toLowerCase()
-          .includes(filters.tipo_aggiornamento.trim().toLowerCase())
-      ) {
         return false;
       }
       if (
@@ -193,9 +180,6 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
       } else if (sortKey === "stato") {
         left = a.stato.toLowerCase();
         right = b.stato.toLowerCase();
-      } else if (sortKey === "tipo_aggiornamento") {
-        left = a.tipoAggiornamento.toLowerCase();
-        right = b.tipoAggiornamento.toLowerCase();
       } else if (sortKey === "submitted_at") {
         left = a.submittedAtTs;
         right = b.submittedAtTs;
@@ -248,7 +232,6 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
               guest: "",
               strutture: [],
               stato: "",
-              tipo_aggiornamento: "",
               submitted_at: "",
               updated_at: "",
             })
@@ -259,7 +242,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
       </div>
 
       <div style={{ overflowX: "auto", marginTop: "0.5rem" }}>
-        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 1080 }}>
+        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 940 }}>
           <thead>
             <tr>
               <th align="left" style={HEADER_CELL_STYLE}>
@@ -278,11 +261,6 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                 </button>
               </th>
               <th align="left" style={HEADER_CELL_STYLE}>
-                <button type="button" onClick={() => setSort("tipo_aggiornamento")}>
-                  Tipo aggiornamento {sortArrow("tipo_aggiornamento")}
-                </button>
-              </th>
-              <th align="left" style={HEADER_CELL_STYLE}>
                 <button type="button" onClick={() => setSort("submitted_at")}>
                   Inviato {sortArrow("submitted_at")}
                 </button>
@@ -291,9 +269,6 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                 <button type="button" onClick={() => setSort("updated_at")}>
                   Ultima modifica {sortArrow("updated_at")}
                 </button>
-              </th>
-              <th align="left" style={HEADER_CELL_STYLE}>
-                Azioni
               </th>
             </tr>
             <tr>
@@ -366,16 +341,6 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
               </th>
               <th align="left" style={CELL_STYLE}>
                 <input
-                  value={filters.tipo_aggiornamento}
-                  onChange={(event) =>
-                    setFilters((prev) => ({ ...prev, tipo_aggiornamento: event.target.value }))
-                  }
-                  placeholder="Filtra tipo"
-                  style={FILTER_INPUT_STYLE}
-                />
-              </th>
-              <th align="left" style={CELL_STYLE}>
-                <input
                   value={filters.submitted_at}
                   onChange={(event) =>
                     setFilters((prev) => ({ ...prev, submitted_at: event.target.value }))
@@ -394,29 +359,21 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                   style={FILTER_INPUT_STYLE}
                 />
               </th>
-              <th align="left" style={CELL_STYLE} />
             </tr>
           </thead>
           <tbody>
             {filteredAndSorted.map((item) => (
               <tr key={item.row.id}>
                 <td style={CELL_STYLE}>
-                  <strong>{item.guest}</strong>
-                </td>
-                <td style={CELL_STYLE}>{item.struttura}</td>
-                <td style={CELL_STYLE}>{item.stato}</td>
-                <td style={CELL_STYLE}>{item.tipoAggiornamento}</td>
-                <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.submittedAtLabel}</td>
-                <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.updatedAtLabel}</td>
-                <td style={CELL_STYLE}>
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <strong>{item.guest}</strong>
                     <Link
                       href={`/dashboard/submissions/${item.row.id}`}
                       aria-label={`Apri dettaglio di ${item.guest}`}
                       title={`Dettaglio: ${item.guest}`}
                       style={{
-                        width: 32,
-                        height: 32,
+                        width: 28,
+                        height: 28,
                         border: "1px solid var(--border)",
                         borderRadius: 8,
                         background: "var(--panel)",
@@ -424,30 +381,17 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                         alignItems: "center",
                         justifyContent: "center",
                         fontWeight: 700,
+                        flexShrink: 0,
                       }}
                     >
                       👁
                     </Link>
-                    <Link
-                      href={`/dashboard/submissions/${item.row.id}/edit`}
-                      aria-label={`Modifica ${item.guest}`}
-                      title={`Modifica: ${item.guest}`}
-                      style={{
-                        width: 32,
-                        height: 32,
-                        border: "1px solid var(--border)",
-                        borderRadius: 8,
-                        background: "var(--panel)",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontWeight: 700,
-                      }}
-                    >
-                      ✎
-                    </Link>
                   </div>
                 </td>
+                <td style={CELL_STYLE}>{item.struttura}</td>
+                <td style={CELL_STYLE}>{item.stato}</td>
+                <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.submittedAtLabel}</td>
+                <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.updatedAtLabel}</td>
               </tr>
             ))}
           </tbody>
