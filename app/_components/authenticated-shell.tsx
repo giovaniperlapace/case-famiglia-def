@@ -58,9 +58,7 @@ export default function AuthenticatedShell({
           </p>
           {role === "responsabile_casa" ? (
             <Link
-              href={tallyNewRegistrationUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`/dashboard/new-registration?next=${encodeURIComponent(tallyNewRegistrationUrl)}`}
               style={{
                 border: "1px solid #0f766e",
                 borderRadius: 8,
