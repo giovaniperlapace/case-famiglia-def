@@ -16,23 +16,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { error: timelineError } = await supabase
-    .from("guest_status_events")
-    .delete()
-    .eq("guest_id", id);
-
-  if (timelineError) {
-    const status = timelineError.message.toLowerCase().includes("forbidden") ? 403 : 400;
-    return NextResponse.json({ error: timelineError.message }, { status });
-  }
-
   const { error: deleteError } = await supabase
     .from("case_alloggio_submissions")
     .delete()
     .eq("id", id);
 
   if (deleteError) {
-    const status = deleteError.message.toLowerCase().includes("forbidden") ? 403 : 400;
+    const lowered = deleteError.message.toLowerCase();
+    const status = lowered.includes("forbidden") || lowered.includes("permission denied") ? 403 : 400;
     return NextResponse.json({ error: deleteError.message }, { status });
   }
 
