@@ -12,7 +12,7 @@ export default async function NewRegistrationPage() {
     redirect("/login?next=/dashboard/new-registration");
   }
 
-  if (role !== "responsabile_casa") {
+  if (role !== "responsabile_casa" && role !== "manager") {
     redirect("/dashboard");
   }
 

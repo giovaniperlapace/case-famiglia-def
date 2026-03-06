@@ -33,6 +33,7 @@ export default function AuthenticatedShell({
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const tallyNewRegistrationUrl = `https://tally.so/r/nW6KZe?id_utente=${encodeURIComponent(userId)}`;
+  const canStartNewRegistration = role === "responsabile_casa" || role === "manager";
 
   const visibleItems = useMemo(
     () => NAV_ITEMS.filter((item) => !item.visibleFor || item.visibleFor.includes(role)),
@@ -56,7 +57,7 @@ export default function AuthenticatedShell({
           <p className="muted" style={{ margin: 0, alignSelf: "center" }}>
             {email ?? "utente autenticato"}
           </p>
-          {role === "responsabile_casa" ? (
+          {canStartNewRegistration ? (
             <Link
               href={`/dashboard/new-registration?next=${encodeURIComponent(tallyNewRegistrationUrl)}`}
               style={{
