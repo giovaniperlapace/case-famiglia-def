@@ -2,9 +2,45 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
-import { CLINICAL_FIELDS, FOLLOW_UP_FIELDS, GUEST_STATUS_LABEL, type GuestStatus } from "@/lib/guests/schema";
+import { GUEST_STATUS_LABEL, type GuestStatus } from "@/lib/guests/schema";
+import {
+  CAUSA_DECESSO_OPTIONS,
+  CAUSA_USCITA_OPTIONS,
+  DECESSO_CAUSA_USCITA,
+  DECESSO_DOVE_DORME,
+  DIPENDENZE_OPTIONS,
+  DOVE_DORME_OPTIONS,
+  PATOLOGIA_PSICHIATRICA_OPTIONS,
+  PATOLOGIE_OPTIONS,
+  REDDITO_OPTIONS,
+  RESIDENZA_OPTIONS,
+  TIPO_LAVORO_OPTIONS,
+  TIPO_REDDITO_OPTIONS,
+  type UpdateTypeOption,
+} from "@/lib/guests/status-update-options";
 
-type UpdateType = "medical" | "exit" | "death";
+type StatusUpdateForm = {
+  data_ultimo_contatto: string;
+  dove_dorme: string;
+  data_decesso_2: string;
+  causa_decesso_2: string;
+  ha_residenza: string;
+  ha_un_reddito: string;
+  tipo_di_reddito_3: string;
+  tipo_di_lavoro_3: string;
+  data_uscita: string;
+  causa_uscita: string;
+  data_decesso: string;
+  causa_decesso: string;
+  al_momento_dell_uscita_ha_residenza: string;
+  al_momento_dell_uscita_ha_un_reddito: string;
+  tipo_di_reddito_2: string;
+  tipo_di_lavoro_2: string;
+  dipendenze: string;
+  patologie: string;
+  patologia_psichiatrica: string;
+  note: string;
+};
 
 type StatusUpdateClientProps = {
   guestId: string;
@@ -13,13 +49,27 @@ type StatusUpdateClientProps = {
 
 export default function StatusUpdateClient({ guestId, currentStatus }: StatusUpdateClientProps) {
   const router = useRouter();
-  const [updateType, setUpdateType] = useState<UpdateType>("medical");
-  const [effectiveDate, setEffectiveDate] = useState("");
-  const [payload, setPayload] = useState<Record<string, string>>({
+  const [updateType, setUpdateType] = useState<UpdateTypeOption>("followup");
+  const [form, setForm] = useState<StatusUpdateForm>({
+    data_ultimo_contatto: "",
+    dove_dorme: "",
+    data_decesso_2: "",
+    causa_decesso_2: "",
+    ha_residenza: "",
+    ha_un_reddito: "",
+    tipo_di_reddito_3: "",
+    tipo_di_lavoro_3: "",
+    data_uscita: "",
     causa_uscita: "",
-    exit_destination: "",
+    data_decesso: "",
     causa_decesso: "",
-    place_of_death: "",
+    al_momento_dell_uscita_ha_residenza: "",
+    al_momento_dell_uscita_ha_un_reddito: "",
+    tipo_di_reddito_2: "",
+    tipo_di_lavoro_2: "",
+    dipendenze: "",
+    patologie: "",
+    patologia_psichiatrica: "",
     note: "",
   });
   const [loading, setLoading] = useState(false);
@@ -27,9 +77,15 @@ export default function StatusUpdateClient({ guestId, currentStatus }: StatusUpd
 
   const isTerminal = currentStatus === "DECEDUTO";
   const canSubmit = useMemo(() => !loading && !isTerminal, [loading, isTerminal]);
+  const isFollowUpDeath = updateType === "followup" && form.dove_dorme === DECESSO_DOVE_DORME;
+  const isExitDeath = updateType === "exit" && form.causa_uscita === DECESSO_CAUSA_USCITA;
+  const hasFollowUpIncome = form.ha_un_reddito === "Sì";
+  const hasExitIncome = form.al_momento_dell_uscita_ha_un_reddito === "Sì";
+  const needsFollowUpWorkType = hasFollowUpIncome && form.tipo_di_reddito_3 === "Reddito da lavoro";
+  const needsExitWorkType = hasExitIncome && form.tipo_di_reddito_2 === "Reddito da lavoro";
 
-  function setPayloadField(key: string, value: string) {
-    setPayload((prev) => ({ ...prev, [key]: value }));
+  function setField<K extends keyof StatusUpdateForm>(key: K, value: StatusUpdateForm[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -43,12 +99,51 @@ export default function StatusUpdateClient({ guestId, currentStatus }: StatusUpd
 
     setLoading(true);
     try {
+      const payload: Record<string, string> = {
+        dipendenze: form.dipendenze,
+        patologie: form.patologie,
+        patologia_psichiatrica: form.patologia_psichiatrica,
+        note: form.note,
+      };
+
+      if (updateType === "followup") {
+        payload.data_ultimo_contatto = form.data_ultimo_contatto;
+        payload.dove_dorme = form.dove_dorme;
+        payload.ha_residenza = form.ha_residenza;
+        payload.ha_un_reddito = form.ha_un_reddito;
+
+        if (hasFollowUpIncome) {
+          payload.tipo_di_reddito_3 = form.tipo_di_reddito_3;
+          if (needsFollowUpWorkType) payload.tipo_di_lavoro_3 = form.tipo_di_lavoro_3;
+        }
+
+        if (isFollowUpDeath) {
+          payload.data_decesso_2 = form.data_decesso_2;
+          payload.causa_decesso_2 = form.causa_decesso_2;
+          payload.causa_decesso = form.causa_decesso_2;
+        }
+      } else {
+        payload.data_uscita = form.data_uscita;
+        payload.causa_uscita = form.causa_uscita;
+        payload.al_momento_dell_uscita_ha_residenza = form.al_momento_dell_uscita_ha_residenza;
+        payload.al_momento_dell_uscita_ha_un_reddito = form.al_momento_dell_uscita_ha_un_reddito;
+
+        if (hasExitIncome) {
+          payload.tipo_di_reddito_2 = form.tipo_di_reddito_2;
+          if (needsExitWorkType) payload.tipo_di_lavoro_2 = form.tipo_di_lavoro_2;
+        }
+
+        if (isExitDeath) {
+          payload.data_decesso = form.data_decesso;
+          payload.causa_decesso = form.causa_decesso;
+        }
+      }
+
       const response = await fetch(`/api/guests/${guestId}/status-events`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           updateType,
-          effectiveDate: effectiveDate || null,
           payload,
         }),
       });
@@ -75,77 +170,282 @@ export default function StatusUpdateClient({ guestId, currentStatus }: StatusUpd
 
       <label style={{ display: "grid", gap: 4 }}>
         <span>Tipo aggiornamento</span>
-        <select value={updateType} onChange={(event) => setUpdateType(event.target.value as UpdateType)} disabled={isTerminal}>
-          <option value="medical">Medical / Follow-up</option>
-          <option value="exit">Exit update (USCITO)</option>
-          <option value="death">Death update (DECEDUTO)</option>
+        <select
+          value={updateType}
+          onChange={(event) => setUpdateType(event.target.value as UpdateTypeOption)}
+          disabled={isTerminal}
+        >
+          <option value="followup">Follow-up</option>
+          <option value="exit">Uscita</option>
         </select>
       </label>
 
-      {(updateType === "exit" || updateType === "death") ? (
-        <label style={{ display: "grid", gap: 4 }}>
-          <span>Data evento</span>
-          <input type="date" value={effectiveDate} onChange={(event) => setEffectiveDate(event.target.value)} />
-        </label>
-      ) : null}
-
-      {updateType === "exit" ? (
+      {updateType === "followup" ? (
         <>
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Data ultimo contatto</span>
+            <input
+              type="date"
+              value={form.data_ultimo_contatto}
+              onChange={(event) => setField("data_ultimo_contatto", event.target.value)}
+              required
+            />
+          </label>
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Dove dorme</span>
+            <select value={form.dove_dorme} onChange={(event) => setField("dove_dorme", event.target.value)} required>
+              <option value="">Seleziona...</option>
+              {DOVE_DORME_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          {isFollowUpDeath ? (
+            <>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span>Data decesso</span>
+                <input
+                  type="date"
+                  value={form.data_decesso_2}
+                  onChange={(event) => setField("data_decesso_2", event.target.value)}
+                  required
+                />
+              </label>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span>Causa decesso</span>
+                <select
+                  value={form.causa_decesso_2}
+                  onChange={(event) => setField("causa_decesso_2", event.target.value)}
+                  required
+                >
+                  <option value="">Seleziona...</option>
+                  {CAUSA_DECESSO_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          ) : null}
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Ha residenza</span>
+            <select value={form.ha_residenza} onChange={(event) => setField("ha_residenza", event.target.value)} required>
+              <option value="">Seleziona...</option>
+              {RESIDENZA_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Ha reddito</span>
+            <select value={form.ha_un_reddito} onChange={(event) => setField("ha_un_reddito", event.target.value)} required>
+              <option value="">Seleziona...</option>
+              {REDDITO_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          {hasFollowUpIncome ? (
+            <>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span>Tipo di reddito</span>
+                <select
+                  value={form.tipo_di_reddito_3}
+                  onChange={(event) => setField("tipo_di_reddito_3", event.target.value)}
+                  required
+                >
+                  <option value="">Seleziona...</option>
+                  {TIPO_REDDITO_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {needsFollowUpWorkType ? (
+                <label style={{ display: "grid", gap: 4 }}>
+                  <span>Tipo di lavoro</span>
+                  <select
+                    value={form.tipo_di_lavoro_3}
+                    onChange={(event) => setField("tipo_di_lavoro_3", event.target.value)}
+                    required
+                  >
+                    <option value="">Seleziona...</option>
+                    {TIPO_LAVORO_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+            </>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Data uscita</span>
+            <input
+              type="date"
+              value={form.data_uscita}
+              onChange={(event) => setField("data_uscita", event.target.value)}
+              required
+            />
+          </label>
           <label style={{ display: "grid", gap: 4 }}>
             <span>Causa uscita</span>
-            <input value={payload.causa_uscita ?? ""} onChange={(event) => setPayloadField("causa_uscita", event.target.value)} />
+            <select value={form.causa_uscita} onChange={(event) => setField("causa_uscita", event.target.value)} required>
+              <option value="">Seleziona...</option>
+              {CAUSA_USCITA_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          {isExitDeath ? (
+            <>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span>Data decesso</span>
+                <input
+                  type="date"
+                  value={form.data_decesso}
+                  onChange={(event) => setField("data_decesso", event.target.value)}
+                  required
+                />
+              </label>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span>Causa decesso</span>
+                <select value={form.causa_decesso} onChange={(event) => setField("causa_decesso", event.target.value)} required>
+                  <option value="">Seleziona...</option>
+                  {CAUSA_DECESSO_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          ) : null}
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Al momento dell&apos;uscita ha residenza</span>
+            <select
+              value={form.al_momento_dell_uscita_ha_residenza}
+              onChange={(event) => setField("al_momento_dell_uscita_ha_residenza", event.target.value)}
+              required
+            >
+              <option value="">Seleziona...</option>
+              {RESIDENZA_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
           <label style={{ display: "grid", gap: 4 }}>
-            <span>Destinazione uscita</span>
-            <input value={payload.exit_destination ?? ""} onChange={(event) => setPayloadField("exit_destination", event.target.value)} />
+            <span>Al momento dell&apos;uscita ha reddito</span>
+            <select
+              value={form.al_momento_dell_uscita_ha_un_reddito}
+              onChange={(event) => setField("al_momento_dell_uscita_ha_un_reddito", event.target.value)}
+              required
+            >
+              <option value="">Seleziona...</option>
+              {REDDITO_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
+          {hasExitIncome ? (
+            <>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span>Tipo di reddito</span>
+                <select
+                  value={form.tipo_di_reddito_2}
+                  onChange={(event) => setField("tipo_di_reddito_2", event.target.value)}
+                  required
+                >
+                  <option value="">Seleziona...</option>
+                  {TIPO_REDDITO_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {needsExitWorkType ? (
+                <label style={{ display: "grid", gap: 4 }}>
+                  <span>Tipo di lavoro</span>
+                  <select
+                    value={form.tipo_di_lavoro_2}
+                    onChange={(event) => setField("tipo_di_lavoro_2", event.target.value)}
+                    required
+                  >
+                    <option value="">Seleziona...</option>
+                    {TIPO_LAVORO_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+            </>
+          ) : null}
         </>
-      ) : null}
+      )}
 
-      {updateType === "death" ? (
-        <>
-          <label style={{ display: "grid", gap: 4 }}>
-            <span>Causa decesso</span>
-            <input value={payload.causa_decesso ?? ""} onChange={(event) => setPayloadField("causa_decesso", event.target.value)} />
-          </label>
-          <label style={{ display: "grid", gap: 4 }}>
-            <span>Luogo decesso</span>
-            <input value={payload.place_of_death ?? ""} onChange={(event) => setPayloadField("place_of_death", event.target.value)} />
-          </label>
-        </>
-      ) : null}
-
-      <div className="card" style={{ background: "rgba(15, 118, 110, 0.04)" }}>
-        <p style={{ marginTop: 0, marginBottom: 8, fontWeight: 700 }}>
-          Dati follow-up (schema condiviso con flussi “già fuori casa”)
-        </p>
-        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
-          {FOLLOW_UP_FIELDS.map((field) => (
-            <label key={field.key} style={{ display: "grid", gap: 4 }}>
-              <span>{field.label}</span>
-              <input value={payload[field.key] ?? ""} onChange={(event) => setPayloadField(field.key, event.target.value)} />
-            </label>
+      <label style={{ display: "grid", gap: 4 }}>
+        <span>Dipendenze</span>
+        <select value={form.dipendenze} onChange={(event) => setField("dipendenze", event.target.value)}>
+          <option value="">Seleziona...</option>
+          {DIPENDENZE_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
-        </div>
-      </div>
+        </select>
+      </label>
 
-      <div className="card" style={{ background: "rgba(15, 118, 110, 0.04)" }}>
-        <p style={{ marginTop: 0, marginBottom: 8, fontWeight: 700 }}>
-          Dati clinici / patologici
-        </p>
-        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
-          {CLINICAL_FIELDS.map((field) => (
-            <label key={field.key} style={{ display: "grid", gap: 4 }}>
-              <span>{field.label}</span>
-              <input value={payload[field.key] ?? ""} onChange={(event) => setPayloadField(field.key, event.target.value)} />
-            </label>
+      <label style={{ display: "grid", gap: 4 }}>
+        <span>Patologie</span>
+        <select value={form.patologie} onChange={(event) => setField("patologie", event.target.value)}>
+          <option value="">Seleziona...</option>
+          {PATOLOGIE_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
-        </div>
-      </div>
+        </select>
+      </label>
+
+      <label style={{ display: "grid", gap: 4 }}>
+        <span>Patologia psichiatrica</span>
+        <select
+          value={form.patologia_psichiatrica}
+          onChange={(event) => setField("patologia_psichiatrica", event.target.value)}
+        >
+          <option value="">Seleziona...</option>
+          {PATOLOGIA_PSICHIATRICA_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <label style={{ display: "grid", gap: 4 }}>
         <span>Note</span>
-        <textarea value={payload.note ?? ""} onChange={(event) => setPayloadField("note", event.target.value)} rows={3} />
+        <textarea value={form.note} onChange={(event) => setField("note", event.target.value)} rows={3} />
       </label>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
