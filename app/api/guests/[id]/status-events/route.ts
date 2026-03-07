@@ -14,6 +14,7 @@ import {
   TIPO_REDDITO_OPTIONS,
   isAffirmative,
   isAllowedOption,
+  normalizePatologiaPsichiatrica,
 } from "@/lib/guests/status-update-options";
 
 type EventBody = {
@@ -246,11 +247,12 @@ export async function POST(
   if (payload.patologie && !isAllowedOption(PATOLOGIE_OPTIONS, String(payload.patologie))) {
     return NextResponse.json({ error: "Patologie non valido" }, { status: 400 });
   }
-  if (
-    payload.patologia_psichiatrica &&
-    !isAllowedOption(PATOLOGIA_PSICHIATRICA_OPTIONS, String(payload.patologia_psichiatrica))
-  ) {
-    return NextResponse.json({ error: "Patologia psichiatrica non valida" }, { status: 400 });
+  if (payload.patologia_psichiatrica) {
+    const normalizedPsych = normalizePatologiaPsichiatrica(String(payload.patologia_psichiatrica));
+    if (!normalizedPsych || !isAllowedOption(PATOLOGIA_PSICHIATRICA_OPTIONS, normalizedPsych)) {
+      return NextResponse.json({ error: "Patologia psichiatrica non valida" }, { status: 400 });
+    }
+    payload.patologia_psichiatrica = normalizedPsych;
   }
 
   const { data, error } = await supabase.rpc("create_guest_status_event", {

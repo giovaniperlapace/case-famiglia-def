@@ -91,8 +91,8 @@ export const PATOLOGIE_OPTIONS = [
 
 export const PATOLOGIA_PSICHIATRICA_OPTIONS = [
   "No",
-  "Sì, diagnosticata",
-  "Sì non diagnosticata",
+  "Si, diagnosticata",
+  "Si, non diagnosticata",
   "Disabilità",
 ] as const;
 
@@ -108,4 +108,31 @@ export function isAllowedOption<T extends readonly string[]>(
 
 export function isAffirmative(value: string | null | undefined): boolean {
   return value === "Sì" || value === "Si";
+}
+
+export function normalizePatologiaPsichiatrica(
+  value: string | null | undefined
+): (typeof PATOLOGIA_PSICHIATRICA_OPTIONS)[number] | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized === "no") return "No";
+  if (normalized === "disabilità" || normalized === "disabilita") return "Disabilità";
+  if (
+    normalized === "si, diagnosticata" ||
+    normalized === "sì, diagnosticata" ||
+    normalized === "si diagnosticata" ||
+    normalized === "sì diagnosticata"
+  ) {
+    return "Si, diagnosticata";
+  }
+  if (
+    normalized === "si, non diagnosticata" ||
+    normalized === "sì, non diagnosticata" ||
+    normalized === "si non diagnosticata" ||
+    normalized === "sì non diagnosticata"
+  ) {
+    return "Si, non diagnosticata";
+  }
+  return null;
 }
