@@ -17,7 +17,6 @@ export type SubmissionRow = {
   tipo_aggiornamento: string | null;
   data_uscita: string | null;
   data_decesso: string | null;
-  data_decesso_2: string | null;
 };
 
 type SortKey =

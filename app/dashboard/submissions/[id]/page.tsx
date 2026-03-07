@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getGuestTimeline } from "@/lib/guests/server";
+import { getGuestTimeline, type GuestTimelineEvent } from "@/lib/guests/server";
 import { GUEST_STATUS_LABEL } from "@/lib/guests/schema";
 import { getCurrentStatus } from "@/lib/guests/status";
 import DeleteGuestButton from "./delete-guest-button";
@@ -40,16 +40,8 @@ type SubmissionDetailRow = {
   causa_decesso: string | null;
   al_momento_dell_uscita_ha_residenza: string | null;
   al_momento_dell_uscita_ha_un_reddito: string | null;
-  tipo_di_reddito_2: string | null;
-  tipo_di_reddito_pensione_2: string | null;
-  tipo_di_reddito_invalidita_2: string | null;
-  tipo_di_reddito_reddito_di_inclusione_2: string | null;
-  tipo_di_reddito_reddito_da_lavoro_2: string | null;
-  tipo_di_lavoro_2: string | null;
   data_ultimo_contatto: string | null;
   dove_dorme: string | null;
-  data_decesso_2: string | null;
-  causa_decesso_2: string | null;
   dipendenze: string | null;
   dipendenze_alcolismo: string | null;
   dipendenze_sostanze: string | null;
@@ -107,6 +99,22 @@ function splitCsv(value: string | null | undefined): string[] {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function getLatestPayloadValue(
+  events: GuestTimelineEvent[],
+  keys: readonly string[]
+): string | null {
+  for (const event of events) {
+    const payload = (event.payload ?? {}) as Record<string, unknown>;
+    for (const key of keys) {
+      const raw = payload[key];
+      if (typeof raw === "string" && raw.trim()) {
+        return raw.trim();
+      }
+    }
+  }
+  return null;
 }
 
 function SummaryCard({
@@ -189,13 +197,10 @@ const USCITA_FIELDS: FieldDef[] = [
   { key: "causa_uscita", label: "Causa uscita" },
   { key: "al_momento_dell_uscita_ha_residenza", label: "Residenza all'uscita" },
   { key: "al_momento_dell_uscita_ha_un_reddito", label: "Reddito all'uscita" },
-  { key: "tipo_di_lavoro_2", label: "Tipo di lavoro (uscita)" },
   { key: "data_decesso", label: "Data decesso" },
   { key: "causa_decesso", label: "Causa decesso" },
   { key: "data_ultimo_contatto", label: "Data ultimo contatto" },
   { key: "dove_dorme", label: "Dove dorme" },
-  { key: "data_decesso_2", label: "Data decesso (agg.)" },
-  { key: "causa_decesso_2", label: "Causa decesso (agg.)" },
 ];
 
 const STATUS_HIGHLIGHT_STYLE: Record<string, { color: string; background: string }> = {
@@ -215,7 +220,7 @@ export default async function SubmissionDetailPage({
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
-      "id,submission_id,submitted_at,current_status,current_status_at,struttura,nome_della_persona,cognome,data_di_nascita,luogo_di_nascita,sesso_della_persona,nazionalita,contatto_della_persona,data_ingresso,e_gia_stato_in_un_accoglienza_della_comunita,al_momento_dell_ingresso_ha_un_reddito,tipo_di_reddito,tipo_di_reddito_pensione,tipo_di_reddito_invalidita,tipo_di_reddito_reddito_di_inclusione,tipo_di_reddito_reddito_da_lavoro,tipo_di_lavoro,al_momento_dell_ingresso_ha_residenza,dove_dormiva,principale_causa_poverta,data_uscita,causa_uscita,data_decesso,causa_decesso,al_momento_dell_uscita_ha_residenza,al_momento_dell_uscita_ha_un_reddito,tipo_di_reddito_2,tipo_di_reddito_pensione_2,tipo_di_reddito_invalidita_2,tipo_di_reddito_reddito_di_inclusione_2,tipo_di_reddito_reddito_da_lavoro_2,tipo_di_lavoro_2,data_ultimo_contatto,dove_dorme,data_decesso_2,causa_decesso_2,dipendenze,dipendenze_alcolismo,dipendenze_sostanze,dipendenze_ludopatia,dipendenze_nessuna,patologie,patologie_malattie_infettive_e_parassitarie,patologie_neoplasie_tumori,patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123,patologie_malattie_endocrine_nutrizionali_e_metaboliche,patologie_disturbi_psichici_e_comportamentali,patologie_malattie_del_sistema_nervoso,patologie_malattie_dell_occhio_e_degli_annessi_oculari,patologie_malattie_dell_orecchio_e_del_processo_mastoideo,patologie_malattie_del_sistema_circolatorio,patologie_malattie_del_sistema_respiratorio,patologie_malattie_dell_apparato_digerente,patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo,patologie_malattie_del_sistema_muscoloscheletrico_e_del_55e101,patologie_malattie_dell_apparato_genito_urinario,patologie_malformazioni_congenite_deformita_e_anomalie_c_84cf9a,patologie_traumi_avvelenamenti_e_alcune_altre_conseguenz_85ac11,patologie_nessuna,patologie_altro,patologia_psichiatrica"
+      "id,submission_id,submitted_at,current_status,current_status_at,struttura,nome_della_persona,cognome,data_di_nascita,luogo_di_nascita,sesso_della_persona,nazionalita,contatto_della_persona,data_ingresso,e_gia_stato_in_un_accoglienza_della_comunita,al_momento_dell_ingresso_ha_un_reddito,tipo_di_reddito,tipo_di_reddito_pensione,tipo_di_reddito_invalidita,tipo_di_reddito_reddito_di_inclusione,tipo_di_reddito_reddito_da_lavoro,tipo_di_lavoro,al_momento_dell_ingresso_ha_residenza,dove_dormiva,principale_causa_poverta,data_uscita,causa_uscita,data_decesso,causa_decesso,al_momento_dell_uscita_ha_residenza,al_momento_dell_uscita_ha_un_reddito,data_ultimo_contatto,dove_dorme,dipendenze,dipendenze_alcolismo,dipendenze_sostanze,dipendenze_ludopatia,dipendenze_nessuna,patologie,patologie_malattie_infettive_e_parassitarie,patologie_neoplasie_tumori,patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123,patologie_malattie_endocrine_nutrizionali_e_metaboliche,patologie_disturbi_psichici_e_comportamentali,patologie_malattie_del_sistema_nervoso,patologie_malattie_dell_occhio_e_degli_annessi_oculari,patologie_malattie_dell_orecchio_e_del_processo_mastoideo,patologie_malattie_del_sistema_circolatorio,patologie_malattie_del_sistema_respiratorio,patologie_malattie_dell_apparato_digerente,patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo,patologie_malattie_del_sistema_muscoloscheletrico_e_del_55e101,patologie_malattie_dell_apparato_genito_urinario,patologie_malformazioni_congenite_deformita_e_anomalie_c_84cf9a,patologie_traumi_avvelenamenti_e_alcune_altre_conseguenz_85ac11,patologie_nessuna,patologie_altro,patologia_psichiatrica"
     )
     .eq("id", id)
     .maybeSingle();
@@ -242,15 +247,20 @@ export default async function SubmissionDetailPage({
   ]
     .filter(Boolean) as string[];
   const ingressoIncomeTypesUnique = Array.from(new Set(ingressoIncomeTypes));
-  const uscitaIncomeTypes = [
-    isTruthy(row.tipo_di_reddito_pensione_2) ? "Pensione" : null,
-    isTruthy(row.tipo_di_reddito_invalidita_2) ? "Invalidità" : null,
-    isTruthy(row.tipo_di_reddito_reddito_di_inclusione_2) ? "Reddito di inclusione" : null,
-    isTruthy(row.tipo_di_reddito_reddito_da_lavoro_2) ? "Reddito da lavoro" : null,
-    ...splitCsv(row.tipo_di_reddito_2),
-  ]
-    .filter(Boolean) as string[];
-  const uscitaIncomeTypesUnique = Array.from(new Set(uscitaIncomeTypes));
+  const uscitaIncomeTypeRaw = getLatestPayloadValue(timeline, [
+    "tipo_di_reddito_uscita",
+    "tipo_di_reddito_2",
+  ]);
+  const uscitaIncomeTypesUnique = Array.from(new Set(splitCsv(uscitaIncomeTypeRaw)));
+  const uscitaWorkType = getLatestPayloadValue(timeline, ["tipo_di_lavoro_uscita", "tipo_di_lavoro_2"]);
+  const decessoUpdateDate = getLatestPayloadValue(timeline, [
+    "data_decesso_followup",
+    "data_decesso_2",
+  ]);
+  const decessoUpdateCause = getLatestPayloadValue(timeline, [
+    "causa_decesso_followup",
+    "causa_decesso_2",
+  ]);
 
   const dipendenzeSelected = [
     isTruthy(row.dipendenze_alcolismo) ? "Alcolismo" : null,
@@ -384,6 +394,33 @@ export default async function SubmissionDetailPage({
           <div className="card" style={{ marginTop: "1rem" }}>
             <h2 style={{ marginTop: 0, marginBottom: "0.75rem" }}>Reddito all&apos;uscita</h2>
             <SummaryCard title="Tipi selezionati" items={uscitaIncomeTypesUnique} />
+            <div
+              style={{
+                marginTop: 12,
+                display: "grid",
+                gap: 12,
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              }}
+            >
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                  Tipo di lavoro (uscita)
+                </p>
+                <p style={{ margin: "4px 0 0", fontWeight: 600 }}>{formatValue(uscitaWorkType)}</p>
+              </div>
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                  Data decesso (agg.)
+                </p>
+                <p style={{ margin: "4px 0 0", fontWeight: 600 }}>{formatValue(decessoUpdateDate)}</p>
+              </div>
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                  Causa decesso (agg.)
+                </p>
+                <p style={{ margin: "4px 0 0", fontWeight: 600 }}>{formatValue(decessoUpdateCause)}</p>
+              </div>
+            </div>
           </div>
         </>
       ) : null}

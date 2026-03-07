@@ -17,7 +17,7 @@ export default async function DashboardPage() {
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
-      "id,submission_id,submitted_at,updated_at,current_status,struttura,nome_della_persona,cognome,tipo_aggiornamento,data_uscita,data_decesso,data_decesso_2"
+      "id,submission_id,submitted_at,updated_at,current_status,struttura,nome_della_persona,cognome,tipo_aggiornamento,data_uscita,data_decesso"
     )
     .order("submitted_at", { ascending: false });
 

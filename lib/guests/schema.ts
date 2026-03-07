@@ -28,27 +28,12 @@ export const GUEST_PROFILE_FIELDS: Array<{ key: GuestProfileFieldKey; label: str
 export type FollowUpFieldKey =
   | "al_momento_dell_uscita_ha_residenza"
   | "al_momento_dell_uscita_ha_un_reddito"
-  | "tipo_di_reddito_2"
-  | "tipo_di_reddito_pensione_2"
-  | "tipo_di_reddito_invalidita_2"
-  | "tipo_di_reddito_reddito_di_inclusione_2"
-  | "tipo_di_reddito_reddito_da_lavoro_2"
-  | "tipo_di_lavoro_2"
   | "data_ultimo_contatto"
   | "dove_dorme";
 
 export const FOLLOW_UP_FIELDS: Array<{ key: FollowUpFieldKey; label: string }> = [
   { key: "al_momento_dell_uscita_ha_residenza", label: "Residenza (follow-up)" },
   { key: "al_momento_dell_uscita_ha_un_reddito", label: "Reddito (follow-up)" },
-  { key: "tipo_di_reddito_2", label: "Tipo di reddito (follow-up)" },
-  { key: "tipo_di_reddito_pensione_2", label: "Reddito follow-up: Pensione" },
-  { key: "tipo_di_reddito_invalidita_2", label: "Reddito follow-up: Invalidità" },
-  {
-    key: "tipo_di_reddito_reddito_di_inclusione_2",
-    label: "Reddito follow-up: Reddito di inclusione",
-  },
-  { key: "tipo_di_reddito_reddito_da_lavoro_2", label: "Reddito follow-up: Da lavoro" },
-  { key: "tipo_di_lavoro_2", label: "Tipo di lavoro (follow-up)" },
   { key: "data_ultimo_contatto", label: "Data ultimo contatto" },
   { key: "dove_dorme", label: "Dove dorme" },
 ];

@@ -4,7 +4,6 @@ type StatusSource = {
   current_status?: string | null;
   data_uscita?: string | null;
   data_decesso?: string | null;
-  data_decesso_2?: string | null;
   tipo_aggiornamento?: string | null;
 };
 
@@ -13,7 +12,7 @@ export function getCurrentStatus(source: StatusSource): GuestStatus {
   if (source.current_status === "USCITO") return "USCITO";
   if (source.current_status === "DECEDUTO") return "DECEDUTO";
 
-  if (source.data_decesso || source.data_decesso_2) return "DECEDUTO";
+  if (source.data_decesso) return "DECEDUTO";
   if (source.data_uscita) return "USCITO";
 
   const updateType = (source.tipo_aggiornamento ?? "").toLowerCase();

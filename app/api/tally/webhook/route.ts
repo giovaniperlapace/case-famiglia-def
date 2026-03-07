@@ -144,6 +144,46 @@ export async function POST(req: Request) {
   }
 
   try {
+    const supabase = createSupabaseServiceClient();
+    const { data: existingSubmission, error: existingSubmissionError } = await supabase
+      .from("case_alloggio_submissions")
+      .select("id")
+      .eq("submission_id", mapped.submissionId)
+      .maybeSingle();
+
+    if (existingSubmissionError) {
+      await logWebhookEvent({
+        source: "tally",
+        event_type: "form_submission",
+        submission_id: mapped.submissionId,
+        respondent_id: mapped.respondentId || null,
+        email: mapped.ownerEmail,
+        status: "error_existing_check",
+        error_code: existingSubmissionError.code ?? null,
+        error_message: existingSubmissionError.message ?? "Existing submission lookup failed",
+        payload,
+        normalized: mapped.row,
+      });
+      return NextResponse.json({ error: "Webhook ingestion failed" }, { status: 500 });
+    }
+
+    if (existingSubmission) {
+      await logWebhookEvent({
+        source: "tally",
+        event_type: "form_submission",
+        submission_id: mapped.submissionId,
+        respondent_id: mapped.respondentId || null,
+        email: mapped.ownerEmail,
+        status: "duplicate_ignored",
+        error_code: null,
+        error_message: null,
+        payload,
+        normalized: mapped.row,
+      });
+
+      return NextResponse.json({ ok: true, duplicate_safe: true, duplicate_ignored: true });
+    }
+
     const baseRow = {
       ...mapped.row,
       id_utente: mapped.row.id_utente ?? null,

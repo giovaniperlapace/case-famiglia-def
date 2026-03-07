@@ -9,7 +9,6 @@ type StatsRow = {
   current_status: string | null;
   data_uscita: string | null;
   data_decesso: string | null;
-  data_decesso_2: string | null;
   tipo_aggiornamento: string | null;
 };
 
@@ -19,7 +18,7 @@ export default async function AdminStatisticsPage() {
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
-      "id,struttura,current_status,data_uscita,data_decesso,data_decesso_2,tipo_aggiornamento"
+      "id,struttura,current_status,data_uscita,data_decesso,tipo_aggiornamento"
     );
 
   const rows = (data ?? []) as StatsRow[];

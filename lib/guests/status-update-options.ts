@@ -1,5 +1,16 @@
-export const UPDATE_TYPE_OPTIONS = ["followup", "exit"] as const;
+export const UPDATE_TYPE_OPTIONS = ["followup", "exit", "death", "reentry"] as const;
 export type UpdateTypeOption = (typeof UPDATE_TYPE_OPTIONS)[number];
+
+export const RIENTRO_STESSA_STRUTTURA_OPTIONS = ["Sì", "No"] as const;
+
+export const STRUTTURA_RIENTRO_OPTIONS = [
+  "Buon Pastore",
+  "San Calisto",
+  "Villetta",
+  "Palazzo Migliori",
+  "Casa di Heidi",
+  "Caio Manilio",
+] as const;
 
 export const DOVE_DORME_OPTIONS = [
   "Strada",
