@@ -14,16 +14,23 @@ function baseForm(): StatusUpdateFormValues {
     causa_decesso_followup: "",
     ha_residenza: "No",
     ha_un_reddito: "No",
+    al_momento_dell_ingresso_ha_i_seguenti_documenti: "",
     tipo_di_reddito_followup: "",
     tipo_di_lavoro_followup: "",
     data_uscita: "",
     causa_uscita: "",
     data_decesso: "",
     causa_decesso: "",
+    al_momento_dell_uscita_ha_i_seguenti_documenti: "",
     al_momento_dell_uscita_ha_residenza: "No",
     al_momento_dell_uscita_ha_un_reddito: "No",
     tipo_di_reddito_uscita: "",
     tipo_di_lavoro_uscita: "",
+    siamo_ancora_in_contatto: "",
+    chi_e_in_contatto: "",
+    ha_i_requisiti_per_fare_la_domanda_di_casa_popolare: "",
+    ha_gia_fatto_domanda_di_casa_popolare: "",
+    data_domanda_casa_popolare: "",
     data_rientro: "",
     rientro_stessa_struttura: "",
     struttura_rientro: "",
@@ -124,4 +131,43 @@ test("payload builder preserves historical update semantics by update type", () 
   assert.equal(reentryPayload.data_rientro, "2026-03-04");
   assert.equal(reentryPayload.rientro_stessa_struttura, "Sì");
   assert.equal(reentryPayload.struttura_rientro, "San Calisto");
+});
+
+test("followup validates conditional contact/housing fields and emits them in payload", () => {
+  const missingContactName = {
+    ...baseForm(),
+    siamo_ancora_in_contatto: "Sì",
+  };
+  assert.equal(
+    validateStatusUpdateForm("followup", missingContactName),
+    "Se siamo ancora in contatto, indica chi è in contatto."
+  );
+
+  const missingHouseDate = {
+    ...baseForm(),
+    ha_gia_fatto_domanda_di_casa_popolare: "Sì",
+  };
+  assert.equal(validateStatusUpdateForm("followup", missingHouseDate), "In data obbligatoria.");
+
+  const valid = {
+    ...baseForm(),
+    al_momento_dell_ingresso_ha_i_seguenti_documenti: "Carta d’identità, Codice fiscale",
+    al_momento_dell_uscita_ha_i_seguenti_documenti: "Nessuno",
+    siamo_ancora_in_contatto: "Sì",
+    chi_e_in_contatto: "Volontario Centro X",
+    ha_i_requisiti_per_fare_la_domanda_di_casa_popolare: "Sì",
+    ha_gia_fatto_domanda_di_casa_popolare: "Sì",
+    data_domanda_casa_popolare: "2026-02-15",
+  };
+  assert.equal(validateStatusUpdateForm("followup", valid), null);
+
+  const payload = buildStatusUpdatePayload("followup", valid, "Villetta");
+  assert.equal(
+    payload.al_momento_dell_ingresso_ha_i_seguenti_documenti,
+    "Carta d’identità, Codice fiscale"
+  );
+  assert.equal(payload.siamo_ancora_in_contatto, "Sì");
+  assert.equal(payload.chi_e_in_contatto, "Volontario Centro X");
+  assert.equal(payload.ha_gia_fatto_domanda_di_casa_popolare, "Sì");
+  assert.equal(payload.data_domanda_casa_popolare, "2026-02-15");
 });

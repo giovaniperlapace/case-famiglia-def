@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { NATIONALITY_OPTIONS } from "@/lib/guests/nationalities";
 import {
+  DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
   DOVE_DORME_OPTIONS,
   PATOLOGIA_PSICHIATRICA_OPTIONS,
@@ -76,6 +77,13 @@ type EditableGuestValues = {
   al_momento_dell_ingresso_ha_residenza: string | null;
   dove_dormiva: string | null;
   principale_causa_poverta: string | null;
+  al_momento_dell_ingresso_ha_i_seguenti_documenti: string | null;
+  al_momento_dell_uscita_ha_i_seguenti_documenti: string | null;
+  siamo_ancora_in_contatto: string | null;
+  chi_e_in_contatto: string | null;
+  ha_i_requisiti_per_fare_la_domanda_di_casa_popolare: string | null;
+  ha_gia_fatto_domanda_di_casa_popolare: string | null;
+  data_domanda_casa_popolare: string | null;
   dipendenze: string | null;
   dipendenze_alcolismo: string | null;
   dipendenze_sostanze: string | null;
@@ -188,6 +196,19 @@ function initForm(initialValues: EditableGuestValues): EditableForm {
       initialValues.al_momento_dell_ingresso_ha_residenza ?? "",
     dove_dormiva: initialValues.dove_dormiva ?? "",
     principale_causa_poverta: initialValues.principale_causa_poverta ?? "",
+    al_momento_dell_ingresso_ha_i_seguenti_documenti:
+      initialValues.al_momento_dell_ingresso_ha_i_seguenti_documenti ?? "",
+    al_momento_dell_uscita_ha_i_seguenti_documenti:
+      initialValues.al_momento_dell_uscita_ha_i_seguenti_documenti ?? "",
+    siamo_ancora_in_contatto: normalizeYesNo(initialValues.siamo_ancora_in_contatto ?? ""),
+    chi_e_in_contatto: initialValues.chi_e_in_contatto ?? "",
+    ha_i_requisiti_per_fare_la_domanda_di_casa_popolare: normalizeYesNo(
+      initialValues.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare ?? ""
+    ),
+    ha_gia_fatto_domanda_di_casa_popolare: normalizeYesNo(
+      initialValues.ha_gia_fatto_domanda_di_casa_popolare ?? ""
+    ),
+    data_domanda_casa_popolare: normalizeToIsoDate(initialValues.data_domanda_casa_popolare ?? ""),
     dipendenze: initialValues.dipendenze ?? "",
     dipendenze_alcolismo: normalizeYesNo(initialValues.dipendenze_alcolismo ?? ""),
     dipendenze_sostanze: normalizeYesNo(initialValues.dipendenze_sostanze ?? ""),
@@ -265,6 +286,43 @@ function splitCsvValues(value: string): string[] {
     .filter(Boolean);
 }
 
+function normalizeOptionValue(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’`]/g, "'")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeTokensToAllowed(value: string, options: readonly string[]): string[] {
+  return splitCsvValues(value)
+    .map((token) => {
+      const normalized = normalizeOptionValue(token);
+      return options.find((option) => normalizeOptionValue(option) === normalized) ?? null;
+    })
+    .filter((token): token is string => Boolean(token));
+}
+
+function toCsvValue(values: string[]): string {
+  return values.join(", ");
+}
+
+function orderedUnique(options: readonly string[], values: string[]): string[] {
+  const selected = new Set(values.map((item) => item.trim()).filter(Boolean));
+  return options.filter((option) => selected.has(option));
+}
+
+function toggleCsvOption(currentValue: string, option: string, options: readonly string[]): string {
+  if (!options.includes(option)) return currentValue;
+  const current = splitCsvValues(currentValue);
+  const next = current.includes(option)
+    ? current.filter((item) => item !== option)
+    : [...current, option];
+  return toCsvValue(orderedUnique(options, next));
+}
+
 export default function EditDataClient({ guestId, initialValues }: EditDataClientProps) {
   const router = useRouter();
   const [form, setForm] = useState<EditableForm>(() => initForm(initialValues));
@@ -282,6 +340,14 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
 
   const hasIngressoIncome = form.al_momento_dell_ingresso_ha_un_reddito === "Sì";
   const selectedPovertyCauses = splitCsvValues(form.principale_causa_poverta);
+  const selectedDocumentiIngresso = normalizeTokensToAllowed(
+    form.al_momento_dell_ingresso_ha_i_seguenti_documenti,
+    DOCUMENTI_OPTIONS
+  );
+  const selectedDocumentiUscita = normalizeTokensToAllowed(
+    form.al_momento_dell_uscita_ha_i_seguenti_documenti,
+    DOCUMENTI_OPTIONS
+  );
   const ingressoIncomeSelections = [
     { label: "Pensione", key: "tipo_di_reddito_pensione" as const },
     { label: "Invalidità", key: "tipo_di_reddito_invalidita" as const },
@@ -295,9 +361,18 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
   const selectedDependencies = DIPENDENZE_CHECKBOXES.filter((item) => isYes(form[item.key])).map(
     (item) => item.label
   );
-  const selectedPatologie = PATOLOGIE_CHECKBOXES.filter((item) =>
-    item.key === "patologie_altro" ? Boolean(form.patologie_altro && form.patologie_altro !== "false") : isTrueLike(form[item.key])
-  ).map((item) => item.label);
+  const selectedPatologie = Array.from(
+    new Set([
+      ...PATOLOGIE_CHECKBOXES.filter((item) =>
+        item.key === "patologie_altro"
+          ? Boolean(form.patologie_altro && form.patologie_altro !== "false")
+          : isTrueLike(form[item.key])
+      ).map((item) => item.label),
+      ...normalizeTokensToAllowed(form.patologie, PATOLOGIE_OPTIONS),
+    ])
+  );
+  const needsChiEInContatto = form.siamo_ancora_in_contatto === "Sì";
+  const needsDataDomandaCasaPopolare = form.ha_gia_fatto_domanda_di_casa_popolare === "Sì";
 
   useEffect(() => {
     if (!hasNameOrSurnameChange) {
@@ -373,6 +448,13 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
     }
 
     if (
+      selectedDocumentiIngresso.some((documento) => !isAllowed(DOCUMENTI_OPTIONS, documento)) ||
+      selectedDocumentiUscita.some((documento) => !isAllowed(DOCUMENTI_OPTIONS, documento))
+    ) {
+      return "Documenti non validi.";
+    }
+
+    if (
       selectedDependencies.some((dependency) => !isAllowed(DIPENDENZE_OPTIONS, dependency)) ||
       (selectedDependencies.includes("Nessuna") && selectedDependencies.length > 1)
     ) {
@@ -393,6 +475,32 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
       return "Patologia psichiatrica non valida.";
     }
 
+    if (form.siamo_ancora_in_contatto && !isAllowed(YES_NO_OPTIONS, form.siamo_ancora_in_contatto)) {
+      return "Il campo 'Siamo ancora in contatto' accetta solo Sì/No.";
+    }
+
+    if (needsChiEInContatto && !form.chi_e_in_contatto.trim()) {
+      return "Se siamo ancora in contatto, indica chi è in contatto.";
+    }
+
+    if (
+      form.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare &&
+      !isAllowed(YES_NO_OPTIONS, form.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare)
+    ) {
+      return "Il campo requisiti casa popolare accetta solo Sì/No.";
+    }
+
+    if (
+      form.ha_gia_fatto_domanda_di_casa_popolare &&
+      !isAllowed(YES_NO_OPTIONS, form.ha_gia_fatto_domanda_di_casa_popolare)
+    ) {
+      return "Il campo domanda casa popolare accetta solo Sì/No.";
+    }
+
+    if (needsDataDomandaCasaPopolare && !isValidIsoDate(form.data_domanda_casa_popolare)) {
+      return "In data non valida.";
+    }
+
     const yesNoFields: EditableGuestFieldKey[] = [
       "tipo_di_reddito_pensione",
       "tipo_di_reddito_invalidita",
@@ -402,6 +510,9 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
       "dipendenze_sostanze",
       "dipendenze_ludopatia",
       "dipendenze_nessuna",
+      "siamo_ancora_in_contatto",
+      "ha_i_requisiti_per_fare_la_domanda_di_casa_popolare",
+      "ha_gia_fatto_domanda_di_casa_popolare",
     ];
 
     for (const field of yesNoFields) {
@@ -443,6 +554,17 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
         tipo_di_reddito_reddito_di_inclusione: hasIngressoIncome ? form.tipo_di_reddito_reddito_di_inclusione : "No",
         tipo_di_reddito_reddito_da_lavoro: hasIngressoIncome ? form.tipo_di_reddito_reddito_da_lavoro : "No",
         tipo_di_lavoro: needsIngressoWorkType ? form.tipo_di_lavoro : "",
+        al_momento_dell_ingresso_ha_i_seguenti_documenti: selectedDocumentiIngresso.join(", "),
+        al_momento_dell_uscita_ha_i_seguenti_documenti: selectedDocumentiUscita.join(", "),
+        siamo_ancora_in_contatto: form.siamo_ancora_in_contatto,
+        chi_e_in_contatto: needsChiEInContatto ? form.chi_e_in_contatto.trim() : "",
+        ha_i_requisiti_per_fare_la_domanda_di_casa_popolare:
+          form.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare,
+        ha_gia_fatto_domanda_di_casa_popolare: form.ha_gia_fatto_domanda_di_casa_popolare,
+        data_domanda_casa_popolare:
+          needsDataDomandaCasaPopolare && form.data_domanda_casa_popolare
+            ? isoToItalianDate(form.data_domanda_casa_popolare)
+            : "",
         dipendenze: selectedDependencies.includes("Nessuna")
           ? "Nessuna"
           : selectedDependencies.filter((item) => item !== "Nessuna").join(", "),
@@ -729,6 +851,140 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
               </div>
             </div>
           </label>
+
+          <label style={{ display: "grid", gap: 4, gridColumn: "1 / -1" }}>
+            <span>Al momento dell&apos;ingresso ha i seguenti documenti</span>
+            <div style={{ display: "grid", gap: 6, border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
+              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                {DOCUMENTI_OPTIONS.map((option) => (
+                  <label key={`doc-ingresso-${option}`} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedDocumentiIngresso.includes(option)}
+                      onChange={() =>
+                        setField(
+                          "al_momento_dell_ingresso_ha_i_seguenti_documenti",
+                          toggleCsvOption(
+                            form.al_momento_dell_ingresso_ha_i_seguenti_documenti,
+                            option,
+                            DOCUMENTI_OPTIONS
+                          )
+                        )
+                      }
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div className="card" style={{ background: "rgba(15, 118, 110, 0.04)" }}>
+        <h2 style={{ marginTop: 0 }}>Contatti successivi e casa popolare</h2>
+        <div style={sectionGridStyle}>
+          <label style={{ display: "grid", gap: 4, gridColumn: "1 / -1" }}>
+            <span>Al momento dell&apos;uscita ha i seguenti documenti</span>
+            <div style={{ display: "grid", gap: 6, border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
+              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                {DOCUMENTI_OPTIONS.map((option) => (
+                  <label key={`doc-uscita-${option}`} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedDocumentiUscita.includes(option)}
+                      onChange={() =>
+                        setField(
+                          "al_momento_dell_uscita_ha_i_seguenti_documenti",
+                          toggleCsvOption(
+                            form.al_momento_dell_uscita_ha_i_seguenti_documenti,
+                            option,
+                            DOCUMENTI_OPTIONS
+                          )
+                        )
+                      }
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </label>
+
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Siamo ancora in contatto</span>
+            <select
+              value={form.siamo_ancora_in_contatto}
+              onChange={(e) => {
+                const value = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  siamo_ancora_in_contatto: value,
+                  chi_e_in_contatto: value === "Sì" ? prev.chi_e_in_contatto : "",
+                }));
+              }}
+            >
+              <option value="">Seleziona...</option>
+              {YES_NO_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Chi è in contatto</span>
+            <input
+              value={form.chi_e_in_contatto}
+              onChange={(e) => setField("chi_e_in_contatto", e.target.value)}
+              disabled={!needsChiEInContatto}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Ha i requisiti per fare la domanda di casa popolare</span>
+            <select
+              value={form.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare}
+              onChange={(e) =>
+                setField("ha_i_requisiti_per_fare_la_domanda_di_casa_popolare", e.target.value)
+              }
+            >
+              <option value="">Seleziona...</option>
+              {YES_NO_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Ha già fatto domanda di casa popolare</span>
+            <select
+              value={form.ha_gia_fatto_domanda_di_casa_popolare}
+              onChange={(e) => {
+                const value = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  ha_gia_fatto_domanda_di_casa_popolare: value,
+                  data_domanda_casa_popolare:
+                    value === "Sì" ? prev.data_domanda_casa_popolare : "",
+                }));
+              }}
+            >
+              <option value="">Seleziona...</option>
+              {YES_NO_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>In data</span>
+            <input
+              type="date"
+              value={form.data_domanda_casa_popolare}
+              onChange={(e) => setField("data_domanda_casa_popolare", e.target.value)}
+              disabled={!needsDataDomandaCasaPopolare}
+            />
+          </label>
         </div>
       </div>
 
@@ -823,6 +1079,7 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
                           patologie_malformazioni_congenite_deformita_e_anomalie_c_84cf9a: "false",
                           patologie_traumi_avvelenamenti_e_alcune_altre_conseguenz_85ac11: "false",
                           patologie_altro: "false",
+                          patologie: checked ? "Nessuna" : prev.patologie,
                           patologie_nessuna: checked ? "true" : "false",
                         }));
                         return;
@@ -831,6 +1088,7 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
                       setForm((prev) => ({
                         ...prev,
                         [item.key]: checked ? "true" : "false",
+                        patologie: prev.patologie === "Nessuna" ? "" : prev.patologie,
                         patologie_nessuna: checked ? "false" : prev.patologie_nessuna,
                       }));
                     }}
@@ -838,6 +1096,20 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
                   <span>{item.label}</span>
                 </label>
               ))}
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <input
+                  type="checkbox"
+                  checked={selectedPatologie.includes("Cardiopatie")}
+                  onChange={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      patologie: toggleCsvOption(prev.patologie, "Cardiopatie", PATOLOGIE_OPTIONS),
+                      patologie_nessuna: "false",
+                    }))
+                  }
+                />
+                <span>Cardiopatie</span>
+              </label>
             </div>
           </div>
         </div>

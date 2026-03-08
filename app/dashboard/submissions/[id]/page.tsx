@@ -34,12 +34,19 @@ type SubmissionDetailRow = {
   al_momento_dell_ingresso_ha_residenza: string | null;
   dove_dormiva: string | null;
   principale_causa_poverta: string | null;
+  al_momento_dell_ingresso_ha_i_seguenti_documenti: string | null;
   data_uscita: string | null;
   causa_uscita: string | null;
   data_decesso: string | null;
   causa_decesso: string | null;
+  al_momento_dell_uscita_ha_i_seguenti_documenti: string | null;
   al_momento_dell_uscita_ha_residenza: string | null;
   al_momento_dell_uscita_ha_un_reddito: string | null;
+  siamo_ancora_in_contatto: string | null;
+  chi_e_in_contatto: string | null;
+  ha_i_requisiti_per_fare_la_domanda_di_casa_popolare: string | null;
+  ha_gia_fatto_domanda_di_casa_popolare: string | null;
+  data_domanda_casa_popolare: string | null;
   data_ultimo_contatto: string | null;
   dove_dorme: string | null;
   dipendenze: string | null;
@@ -195,8 +202,16 @@ const PERSONAL_FIELDS: FieldDef[] = [
 const USCITA_FIELDS: FieldDef[] = [
   { key: "data_uscita", label: "Data uscita" },
   { key: "causa_uscita", label: "Causa uscita" },
+  { key: "siamo_ancora_in_contatto", label: "Siamo ancora in contatto" },
+  { key: "chi_e_in_contatto", label: "Chi è in contatto" },
   { key: "al_momento_dell_uscita_ha_residenza", label: "Residenza all'uscita" },
   { key: "al_momento_dell_uscita_ha_un_reddito", label: "Reddito all'uscita" },
+  {
+    key: "ha_i_requisiti_per_fare_la_domanda_di_casa_popolare",
+    label: "Requisiti per domanda casa popolare",
+  },
+  { key: "ha_gia_fatto_domanda_di_casa_popolare", label: "Ha già fatto domanda casa popolare" },
+  { key: "data_domanda_casa_popolare", label: "In data" },
   { key: "data_decesso", label: "Data decesso" },
   { key: "causa_decesso", label: "Causa decesso" },
   { key: "data_ultimo_contatto", label: "Data ultimo contatto" },
@@ -220,7 +235,7 @@ export default async function SubmissionDetailPage({
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
-      "id,submission_id,submitted_at,current_status,current_status_at,struttura,nome_della_persona,cognome,data_di_nascita,luogo_di_nascita,sesso_della_persona,nazionalita,contatto_della_persona,data_ingresso,e_gia_stato_in_un_accoglienza_della_comunita,al_momento_dell_ingresso_ha_un_reddito,tipo_di_reddito,tipo_di_reddito_pensione,tipo_di_reddito_invalidita,tipo_di_reddito_reddito_di_inclusione,tipo_di_reddito_reddito_da_lavoro,tipo_di_lavoro,al_momento_dell_ingresso_ha_residenza,dove_dormiva,principale_causa_poverta,data_uscita,causa_uscita,data_decesso,causa_decesso,al_momento_dell_uscita_ha_residenza,al_momento_dell_uscita_ha_un_reddito,data_ultimo_contatto,dove_dorme,dipendenze,dipendenze_alcolismo,dipendenze_sostanze,dipendenze_ludopatia,dipendenze_nessuna,patologie,patologie_malattie_infettive_e_parassitarie,patologie_neoplasie_tumori,patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123,patologie_malattie_endocrine_nutrizionali_e_metaboliche,patologie_disturbi_psichici_e_comportamentali,patologie_malattie_del_sistema_nervoso,patologie_malattie_dell_occhio_e_degli_annessi_oculari,patologie_malattie_dell_orecchio_e_del_processo_mastoideo,patologie_malattie_del_sistema_circolatorio,patologie_malattie_del_sistema_respiratorio,patologie_malattie_dell_apparato_digerente,patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo,patologie_malattie_del_sistema_muscoloscheletrico_e_del_55e101,patologie_malattie_dell_apparato_genito_urinario,patologie_malformazioni_congenite_deformita_e_anomalie_c_84cf9a,patologie_traumi_avvelenamenti_e_alcune_altre_conseguenz_85ac11,patologie_nessuna,patologie_altro,patologia_psichiatrica"
+      "id,submission_id,submitted_at,current_status,current_status_at,struttura,nome_della_persona,cognome,data_di_nascita,luogo_di_nascita,sesso_della_persona,nazionalita,contatto_della_persona,data_ingresso,e_gia_stato_in_un_accoglienza_della_comunita,al_momento_dell_ingresso_ha_un_reddito,tipo_di_reddito,tipo_di_reddito_pensione,tipo_di_reddito_invalidita,tipo_di_reddito_reddito_di_inclusione,tipo_di_reddito_reddito_da_lavoro,tipo_di_lavoro,al_momento_dell_ingresso_ha_residenza,dove_dormiva,principale_causa_poverta,al_momento_dell_ingresso_ha_i_seguenti_documenti,data_uscita,causa_uscita,data_decesso,causa_decesso,al_momento_dell_uscita_ha_i_seguenti_documenti,al_momento_dell_uscita_ha_residenza,al_momento_dell_uscita_ha_un_reddito,siamo_ancora_in_contatto,chi_e_in_contatto,ha_i_requisiti_per_fare_la_domanda_di_casa_popolare,ha_gia_fatto_domanda_di_casa_popolare,data_domanda_casa_popolare,data_ultimo_contatto,dove_dorme,dipendenze,dipendenze_alcolismo,dipendenze_sostanze,dipendenze_ludopatia,dipendenze_nessuna,patologie,patologie_malattie_infettive_e_parassitarie,patologie_neoplasie_tumori,patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123,patologie_malattie_endocrine_nutrizionali_e_metaboliche,patologie_disturbi_psichici_e_comportamentali,patologie_malattie_del_sistema_nervoso,patologie_malattie_dell_occhio_e_degli_annessi_oculari,patologie_malattie_dell_orecchio_e_del_processo_mastoideo,patologie_malattie_del_sistema_circolatorio,patologie_malattie_del_sistema_respiratorio,patologie_malattie_dell_apparato_digerente,patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo,patologie_malattie_del_sistema_muscoloscheletrico_e_del_55e101,patologie_malattie_dell_apparato_genito_urinario,patologie_malformazioni_congenite_deformita_e_anomalie_c_84cf9a,patologie_traumi_avvelenamenti_e_alcune_altre_conseguenz_85ac11,patologie_nessuna,patologie_altro,patologia_psichiatrica"
     )
     .eq("id", id)
     .maybeSingle();
@@ -247,11 +262,17 @@ export default async function SubmissionDetailPage({
   ]
     .filter(Boolean) as string[];
   const ingressoIncomeTypesUnique = Array.from(new Set(ingressoIncomeTypes));
+  const documentiIngresso = Array.from(
+    new Set(splitCsv(row.al_momento_dell_ingresso_ha_i_seguenti_documenti))
+  );
   const uscitaIncomeTypeRaw = getLatestPayloadValue(timeline, [
     "tipo_di_reddito_uscita",
     "tipo_di_reddito_2",
   ]);
   const uscitaIncomeTypesUnique = Array.from(new Set(splitCsv(uscitaIncomeTypeRaw)));
+  const documentiUscita = Array.from(
+    new Set(splitCsv(row.al_momento_dell_uscita_ha_i_seguenti_documenti))
+  );
   const uscitaWorkType = getLatestPayloadValue(timeline, ["tipo_di_lavoro_uscita", "tipo_di_lavoro_2"]);
   const decessoUpdateDate = getLatestPayloadValue(timeline, [
     "data_decesso_followup",
@@ -385,7 +406,16 @@ export default async function SubmissionDetailPage({
       />
       <div className="card" style={{ marginTop: "1rem" }}>
         <h2 style={{ marginTop: 0, marginBottom: "0.75rem" }}>Reddito all&apos;ingresso</h2>
-        <SummaryCard title="Tipi selezionati" items={ingressoIncomeTypesUnique} />
+        <div
+          style={{
+            display: "grid",
+            gap: 12,
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          }}
+        >
+          <SummaryCard title="Tipi selezionati" items={ingressoIncomeTypesUnique} />
+          <SummaryCard title="Documenti all'ingresso" items={documentiIngresso} />
+        </div>
       </div>
 
       {showUscitaSection ? (
@@ -393,7 +423,16 @@ export default async function SubmissionDetailPage({
           <Section title="Dati di uscita e contatti successivi" data={row} fields={USCITA_FIELDS} />
           <div className="card" style={{ marginTop: "1rem" }}>
             <h2 style={{ marginTop: 0, marginBottom: "0.75rem" }}>Reddito all&apos;uscita</h2>
-            <SummaryCard title="Tipi selezionati" items={uscitaIncomeTypesUnique} />
+            <div
+              style={{
+                display: "grid",
+                gap: 12,
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              }}
+            >
+              <SummaryCard title="Tipi selezionati" items={uscitaIncomeTypesUnique} />
+              <SummaryCard title="Documenti all'uscita" items={documentiUscita} />
+            </div>
             <div
               style={{
                 marginTop: 12,

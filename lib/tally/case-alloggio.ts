@@ -1,16 +1,18 @@
 import { extractTallyAnswers, normalizeText, type TallyPayload } from "@/lib/tally/webhook";
+import { DOCUMENTI_OPTIONS } from "@/lib/guests/status-update-options";
 
 export const CASE_ALLOGGIO_HEADER_TO_COLUMN = {
   id_utente: "id_utente",
   "Submission ID": "submission_id",
   "Respondent ID": "respondent_id",
   "Submitted at": "submitted_at",
-  "Nome e cognome compilatore": "nome_e_cognome_compilatore",
+  "Nome e cognome compilatore": "nome_compilatore",
   "Cognome compilatore": "cognome_compilatore",
   "Contatto compilatore": "contatto_compilatore",
   "Telefono compilatore": "telefono",
   Telefono: "contatto_della_persona",
   Struttura: "struttura",
+  "Struttura in cui l'ospite viene accolto": "struttura",
   "Nome della persona": "nome_della_persona",
   Cognome: "cognome",
   "Data di nascita": "data_di_nascita",
@@ -23,6 +25,8 @@ export const CASE_ALLOGGIO_HEADER_TO_COLUMN = {
   "Data ingresso": "data_ingresso",
   "È già stato in un'accoglienza della Comunità":
     "e_gia_stato_in_un_accoglienza_della_comunita",
+  "Al momento dell'ingresso ha i seguenti documenti":
+    "al_momento_dell_ingresso_ha_i_seguenti_documenti",
   "Al momento dell'ingresso ha un reddito": "al_momento_dell_ingresso_ha_un_reddito",
   "Tipo di reddito": "tipo_di_reddito",
   "Tipo di reddito (Pensione)": "tipo_di_reddito_pensione",
@@ -37,12 +41,20 @@ export const CASE_ALLOGGIO_HEADER_TO_COLUMN = {
   "Causa uscita": "causa_uscita",
   "Data decesso": "data_decesso",
   "Causa decesso": "causa_decesso",
+  "Al momento dell'uscita ha i seguenti documenti":
+    "al_momento_dell_uscita_ha_i_seguenti_documenti",
   "Al momento dell'uscita ha residenza": "al_momento_dell_uscita_ha_residenza",
   "Al momento dell'uscita ha un reddito": "al_momento_dell_uscita_ha_un_reddito",
+  "Siamo ancora in contatto": "siamo_ancora_in_contatto",
   "Data ultimo contatto": "data_ultimo_contatto",
+  "Chi è in contatto": "chi_e_in_contatto",
   "Dove dorme": "dove_dorme",
   "Ha residenza": "ha_residenza",
   "Ha un reddito": "ha_un_reddito",
+  "Ha i requisiti per fare la domanda di casa popolare":
+    "ha_i_requisiti_per_fare_la_domanda_di_casa_popolare",
+  "Ha già fatto domanda di casa popolare": "ha_gia_fatto_domanda_di_casa_popolare",
+  "In data": "data_domanda_casa_popolare",
   Dipendenze: "dipendenze",
   "Dipendenze (Alcolismo)": "dipendenze_alcolismo",
   "Dipendenze (Sostanze)": "dipendenze_sostanze",
@@ -112,6 +124,50 @@ function toNullable(value: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+function normalizeOptionValue(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’`]/g, "'")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function splitCsv(value: string | null | undefined): string[] {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function toCsv(values: string[]): string | null {
+  return values.length > 0 ? values.join(", ") : null;
+}
+
+function isTruthySelection(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "true" || normalized === "si" || normalized === "sì" || normalized === "yes" || normalized === "1";
+}
+
+function mergeSelectedOptions(
+  existingCsv: string | null | undefined,
+  options: readonly string[],
+  selectedFromFlags: string[]
+): string[] {
+  const byNormalized = new Map(options.map((option) => [normalizeOptionValue(option), option]));
+  const fromCsv = splitCsv(existingCsv)
+    .map((token) => byNormalized.get(normalizeOptionValue(token)))
+    .filter((value): value is string => Boolean(value));
+  const fromFlags = selectedFromFlags
+    .map((token) => byNormalized.get(normalizeOptionValue(token)))
+    .filter((value): value is string => Boolean(value));
+  const combined = new Set([...fromCsv, ...fromFlags]);
+  return options.filter((option) => combined.has(option));
+}
+
 function extractHiddenUserId(
   payload: TallyPayload,
   answers: Record<string, string>
@@ -176,6 +232,45 @@ export function mapCaseAlloggioSubmission(payload: TallyPayload) {
     row.submitted_at ??
     toNullable(payload.data?.createdAt ?? payload.createdAt);
   row.id_utente = row.id_utente ?? extractHiddenUserId(payload, answers);
+
+  const documentiIngressoFromFlags = DOCUMENTI_OPTIONS.filter((option) => {
+    const normalizedHeader = normalizeHeader(
+      `Al momento dell'ingresso ha i seguenti documenti (${option.replace("’", "'")})`
+    );
+    return isTruthySelection(answersByNormalizedHeader.get(normalizedHeader));
+  });
+  row.al_momento_dell_ingresso_ha_i_seguenti_documenti = toCsv(
+    mergeSelectedOptions(
+      row.al_momento_dell_ingresso_ha_i_seguenti_documenti,
+      DOCUMENTI_OPTIONS,
+      documentiIngressoFromFlags
+    )
+  );
+
+  const documentiUscitaFromFlags = DOCUMENTI_OPTIONS.filter((option) => {
+    const normalizedHeader = normalizeHeader(
+      `Al momento dell'uscita ha i seguenti documenti (${option.replace("’", "'")})`
+    );
+    return isTruthySelection(answersByNormalizedHeader.get(normalizedHeader));
+  });
+  row.al_momento_dell_uscita_ha_i_seguenti_documenti = toCsv(
+    mergeSelectedOptions(
+      row.al_momento_dell_uscita_ha_i_seguenti_documenti,
+      DOCUMENTI_OPTIONS,
+      documentiUscitaFromFlags
+    )
+  );
+
+  if (
+    isTruthySelection(
+      answersByNormalizedHeader.get(normalizeHeader("Patologie (Cardiopatie)"))
+    )
+  ) {
+    const patologieWithCardiopatie = mergeSelectedOptions(row.patologie, ["Cardiopatie"], [
+      "Cardiopatie",
+    ]);
+    row.patologie = toCsv(Array.from(new Set([...splitCsv(row.patologie), ...patologieWithCardiopatie])));
+  }
 
   const ownerEmail =
     normalizeEmail(row.contatto_compilatore) ??

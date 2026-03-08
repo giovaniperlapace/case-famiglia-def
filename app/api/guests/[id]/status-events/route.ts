@@ -13,6 +13,7 @@ import {
   CAUSA_USCITA_OPTIONS,
   DECESSO_CAUSA_USCITA,
   DECESSO_DOVE_DORME,
+  DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
   DOVE_DORME_OPTIONS,
   PATOLOGIA_PSICHIATRICA_OPTIONS,
@@ -78,6 +79,34 @@ function requireIncomeSelection(
     throw new Error(requiredMessage);
   }
   return selected;
+}
+
+function requireText(value: unknown, errorMessage: string): string {
+  const normalized = toNullableTrimmed(value);
+  if (!normalized) {
+    throw new Error(errorMessage);
+  }
+  return normalized;
+}
+
+function normalizeCsvSelections(value: unknown, options: readonly string[], fieldLabel: string): string | null {
+  const normalized = toNullableTrimmed(value);
+  if (!normalized) return null;
+  const selected = normalizeSelections(normalized, options, fieldLabel);
+  if (selected.length === 0) return null;
+  return toCsvValue(selected);
+}
+
+function normalizeSelections(value: string, options: readonly string[], fieldLabel: string): string[] {
+  const selected = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const unique = options.filter((option) => selected.includes(option));
+  if (selected.some((item) => !options.includes(item))) {
+    throw new Error(`${fieldLabel} non valido`);
+  }
+  return unique;
 }
 
 function toIsoDateStart(date: string): string {
@@ -385,6 +414,75 @@ export async function POST(
       return NextResponse.json({ error: "Patologia psichiatrica non valida" }, { status: 400 });
     }
     payload.patologia_psichiatrica = normalizedPsych;
+  }
+
+  try {
+    const docsIngresso = normalizeCsvSelections(
+      rawPayload.al_momento_dell_ingresso_ha_i_seguenti_documenti,
+      DOCUMENTI_OPTIONS,
+      "Documenti all'ingresso"
+    );
+    if (docsIngresso) {
+      payload.al_momento_dell_ingresso_ha_i_seguenti_documenti = docsIngresso;
+    }
+
+    const docsUscita = normalizeCsvSelections(
+      rawPayload.al_momento_dell_uscita_ha_i_seguenti_documenti,
+      DOCUMENTI_OPTIONS,
+      "Documenti all'uscita"
+    );
+    if (docsUscita) {
+      payload.al_momento_dell_uscita_ha_i_seguenti_documenti = docsUscita;
+    }
+  } catch (validationError) {
+    return NextResponse.json(
+      {
+        error:
+          validationError instanceof Error
+            ? validationError.message
+            : "Documenti non validi",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (rawPayload.siamo_ancora_in_contatto !== undefined) {
+    const inContatto = requireReddito(
+      rawPayload.siamo_ancora_in_contatto,
+      "Valore non valido per 'Siamo ancora in contatto'"
+    );
+    payload.siamo_ancora_in_contatto = inContatto;
+    if (inContatto === "Sì") {
+      payload.chi_e_in_contatto = requireText(
+        rawPayload.chi_e_in_contatto,
+        "Chi è in contatto obbligatorio"
+      );
+    } else {
+      payload.chi_e_in_contatto = "";
+    }
+  }
+
+  if (rawPayload.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare !== undefined) {
+    payload.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare = requireReddito(
+      rawPayload.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare,
+      "Valore non valido per i requisiti casa popolare"
+    );
+  }
+
+  if (rawPayload.ha_gia_fatto_domanda_di_casa_popolare !== undefined) {
+    const giaFatta = requireReddito(
+      rawPayload.ha_gia_fatto_domanda_di_casa_popolare,
+      "Valore non valido per la domanda di casa popolare"
+    );
+    payload.ha_gia_fatto_domanda_di_casa_popolare = giaFatta;
+    if (giaFatta === "Sì") {
+      payload.data_domanda_casa_popolare = requireIsoDate(
+        rawPayload.data_domanda_casa_popolare,
+        "In data obbligatoria (YYYY-MM-DD)"
+      );
+    } else {
+      payload.data_domanda_casa_popolare = "";
+    }
   }
 
   const { data, error } = await supabase.rpc("create_guest_status_event", {

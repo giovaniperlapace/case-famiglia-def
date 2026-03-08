@@ -3,11 +3,13 @@ import {
   CAUSA_USCITA_OPTIONS,
   DECESSO_CAUSA_USCITA,
   DECESSO_DOVE_DORME,
+  DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
   DOVE_DORME_OPTIONS,
   PATOLOGIE_OPTIONS,
   REDDITO_OPTIONS,
   RESIDENZA_OPTIONS,
+  SI_NO_OPTIONS,
   RIENTRO_STESSA_STRUTTURA_OPTIONS,
   STRUTTURA_RIENTRO_OPTIONS,
   TIPO_LAVORO_OPTIONS,
@@ -24,16 +26,23 @@ export type StatusUpdateFormValues = {
   causa_decesso_followup: string;
   ha_residenza: string;
   ha_un_reddito: string;
+  al_momento_dell_ingresso_ha_i_seguenti_documenti: string;
   tipo_di_reddito_followup: string;
   tipo_di_lavoro_followup: string;
   data_uscita: string;
   causa_uscita: string;
   data_decesso: string;
   causa_decesso: string;
+  al_momento_dell_uscita_ha_i_seguenti_documenti: string;
   al_momento_dell_uscita_ha_residenza: string;
   al_momento_dell_uscita_ha_un_reddito: string;
   tipo_di_reddito_uscita: string;
   tipo_di_lavoro_uscita: string;
+  siamo_ancora_in_contatto: string;
+  chi_e_in_contatto: string;
+  ha_i_requisiti_per_fare_la_domanda_di_casa_popolare: string;
+  ha_gia_fatto_domanda_di_casa_popolare: string;
+  data_domanda_casa_popolare: string;
   data_rientro: string;
   rientro_stessa_struttura: string;
   struttura_rientro: string;
@@ -93,6 +102,11 @@ function normalizeAllowedSelections(
     throw new Error(`${fieldLabel} non valido.`);
   }
   return selected;
+}
+
+function normalizeOptionalSelections(value: string, options: readonly string[], fieldLabel: string): string[] {
+  if (!value.trim()) return [];
+  return normalizeAllowedSelections(value, options, fieldLabel);
 }
 
 export function splitCsvValues(value: string | null | undefined): string[] {
@@ -211,6 +225,17 @@ export function validateStatusUpdateForm(
   form: StatusUpdateFormValues
 ): string | null {
   try {
+    normalizeOptionalSelections(
+      form.al_momento_dell_ingresso_ha_i_seguenti_documenti,
+      DOCUMENTI_OPTIONS,
+      "Documenti all'ingresso"
+    );
+    normalizeOptionalSelections(
+      form.al_momento_dell_uscita_ha_i_seguenti_documenti,
+      DOCUMENTI_OPTIONS,
+      "Documenti all'uscita"
+    );
+
     normalizeExclusiveSelections(form.dipendenze, DIPENDENZE_OPTIONS, "Dipendenze");
     normalizeExclusiveSelections(form.patologie, PATOLOGIE_OPTIONS, "Patologie");
 
@@ -219,6 +244,32 @@ export function validateStatusUpdateForm(
       !normalizePatologiaPsichiatrica(form.patologia_psichiatrica)
     ) {
       throw new Error("Patologia psichiatrica non valida.");
+    }
+
+    if (form.siamo_ancora_in_contatto && !isAllowed(SI_NO_OPTIONS, form.siamo_ancora_in_contatto)) {
+      throw new Error("Valore non valido per 'Siamo ancora in contatto'.");
+    }
+
+    if (form.siamo_ancora_in_contatto === "Sì" && !form.chi_e_in_contatto.trim()) {
+      throw new Error("Se siamo ancora in contatto, indica chi è in contatto.");
+    }
+
+    if (
+      form.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare &&
+      !isAllowed(SI_NO_OPTIONS, form.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare)
+    ) {
+      throw new Error("Valore non valido per i requisiti casa popolare.");
+    }
+
+    if (
+      form.ha_gia_fatto_domanda_di_casa_popolare &&
+      !isAllowed(SI_NO_OPTIONS, form.ha_gia_fatto_domanda_di_casa_popolare)
+    ) {
+      throw new Error("Valore non valido per la domanda di casa popolare.");
+    }
+
+    if (form.ha_gia_fatto_domanda_di_casa_popolare === "Sì") {
+      validateRequiredIsoDate(form.data_domanda_casa_popolare, "In data");
     }
 
     if (updateType === "followup") {
@@ -340,6 +391,46 @@ export function buildStatusUpdatePayload(
   const normalizedPsych = normalizePatologiaPsichiatrica(form.patologia_psichiatrica);
   if (normalizedPsych) {
     payload.patologia_psichiatrica = normalizedPsych;
+  }
+
+  const ingressDocs = normalizeOptionalSelections(
+    form.al_momento_dell_ingresso_ha_i_seguenti_documenti,
+    DOCUMENTI_OPTIONS,
+    "Documenti all'ingresso"
+  );
+  const exitDocs = normalizeOptionalSelections(
+    form.al_momento_dell_uscita_ha_i_seguenti_documenti,
+    DOCUMENTI_OPTIONS,
+    "Documenti all'uscita"
+  );
+  if (ingressDocs.length > 0) {
+    payload.al_momento_dell_ingresso_ha_i_seguenti_documenti = toCsvValue(ingressDocs);
+  }
+  if (exitDocs.length > 0) {
+    payload.al_momento_dell_uscita_ha_i_seguenti_documenti = toCsvValue(exitDocs);
+  }
+
+  if (form.siamo_ancora_in_contatto) {
+    payload.siamo_ancora_in_contatto = form.siamo_ancora_in_contatto;
+    if (form.siamo_ancora_in_contatto === "Sì" && form.chi_e_in_contatto.trim()) {
+      payload.chi_e_in_contatto = form.chi_e_in_contatto.trim();
+    }
+  }
+
+  if (form.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare) {
+    payload.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare =
+      form.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare;
+  }
+
+  if (form.ha_gia_fatto_domanda_di_casa_popolare) {
+    payload.ha_gia_fatto_domanda_di_casa_popolare =
+      form.ha_gia_fatto_domanda_di_casa_popolare;
+    if (
+      form.ha_gia_fatto_domanda_di_casa_popolare === "Sì" &&
+      form.data_domanda_casa_popolare.trim()
+    ) {
+      payload.data_domanda_casa_popolare = form.data_domanda_casa_popolare;
+    }
   }
 
   if (updateType === "followup") {

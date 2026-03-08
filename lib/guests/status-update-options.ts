@@ -10,6 +10,7 @@ export const STRUTTURA_RIENTRO_OPTIONS = [
   "Palazzo Migliori",
   "Casa di Heidi",
   "Caio Manilio",
+  "Via dei Campani",
 ] as const;
 
 export const DOVE_DORME_OPTIONS = [
@@ -62,6 +63,18 @@ export const RESIDENZA_OPTIONS = [
 ] as const;
 
 export const REDDITO_OPTIONS = ["Sì", "No"] as const;
+export const SI_NO_OPTIONS = ["Sì", "No"] as const;
+
+export const DOCUMENTI_OPTIONS = [
+  "Carta d’identità",
+  "Passaporto",
+  "Permesso di soggiorno",
+  "Codice fiscale",
+  "Tessera sanitaria",
+  "STP/ENI",
+  "Nessuno",
+  "Altro",
+] as const;
 
 export const TIPO_REDDITO_OPTIONS = [
   "Pensione",
@@ -85,6 +98,7 @@ export const PATOLOGIE_OPTIONS = [
   "Malattie del sangue e degli organi ematopoietici e alcuni disturbi del sistema immunitario",
   "Malattie endocrine, nutrizionali e metaboliche",
   "Disturbi psichici e comportamentali",
+  "Cardiopatie",
   "Malattie del sistema nervoso",
   "Malattie dell'occhio e degli annessi oculari",
   "Malattie dell'orecchio e del processo mastoideo",

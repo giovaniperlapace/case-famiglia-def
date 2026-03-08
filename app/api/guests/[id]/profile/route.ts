@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerAuthContext } from "@/lib/auth/server";
 import { NATIONALITY_SET } from "@/lib/guests/nationalities";
 import {
+  DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
   DOVE_DORME_OPTIONS,
   PATOLOGIA_PSICHIATRICA_OPTIONS,
@@ -35,6 +36,13 @@ const ALLOWED_FIELDS = new Set([
   "al_momento_dell_ingresso_ha_residenza",
   "dove_dormiva",
   "principale_causa_poverta",
+  "al_momento_dell_ingresso_ha_i_seguenti_documenti",
+  "al_momento_dell_uscita_ha_i_seguenti_documenti",
+  "siamo_ancora_in_contatto",
+  "chi_e_in_contatto",
+  "ha_i_requisiti_per_fare_la_domanda_di_casa_popolare",
+  "ha_gia_fatto_domanda_di_casa_popolare",
+  "data_domanda_casa_popolare",
   "dipendenze",
   "dipendenze_alcolismo",
   "dipendenze_sostanze",
@@ -161,6 +169,13 @@ export async function PATCH(
     );
   }
 
+  if (patch.data_domanda_casa_popolare && !isValidItalianDate(patch.data_domanda_casa_popolare)) {
+    return NextResponse.json(
+      { error: "In data non valida. Usa il formato gg/mm/aaaa." },
+      { status: 400 }
+    );
+  }
+
   if (patch.nazionalita && !NATIONALITY_SET.has(patch.nazionalita)) {
     return NextResponse.json(
       { error: "Nazionalità non valida. Seleziona un valore dall'elenco previsto." },
@@ -241,6 +256,19 @@ export async function PATCH(
     }
   }
 
+  for (const field of [
+    "al_momento_dell_ingresso_ha_i_seguenti_documenti",
+    "al_momento_dell_uscita_ha_i_seguenti_documenti",
+  ] as const) {
+    const value = patch[field];
+    if (!value) continue;
+    const tokens = splitCsvValues(value);
+    if (tokens.some((token) => !isAllowed(DOCUMENTI_OPTIONS, token))) {
+      return NextResponse.json({ error: "Documenti non validi." }, { status: 400 });
+    }
+    patch[field] = tokens.join(", ");
+  }
+
   if (patch.patologia_psichiatrica) {
     const normalizedPsych = normalizePatologiaPsichiatrica(patch.patologia_psichiatrica);
     if (!normalizedPsych || !isAllowed(PATOLOGIA_PSICHIATRICA_OPTIONS, normalizedPsych)) {
@@ -258,6 +286,9 @@ export async function PATCH(
     "dipendenze_sostanze",
     "dipendenze_ludopatia",
     "dipendenze_nessuna",
+    "siamo_ancora_in_contatto",
+    "ha_i_requisiti_per_fare_la_domanda_di_casa_popolare",
+    "ha_gia_fatto_domanda_di_casa_popolare",
   ] as const;
 
   for (const field of yesNoFields) {
@@ -280,6 +311,7 @@ export async function PATCH(
   let patSangue = trueFlag(patch.patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123);
   let patEndocrine = trueFlag(patch.patologie_malattie_endocrine_nutrizionali_e_metaboliche);
   let patDisturbi = trueFlag(patch.patologie_disturbi_psichici_e_comportamentali);
+  let patCardiopatie = pathologyTokens.includes("Cardiopatie");
   let patNervoso = trueFlag(patch.patologie_malattie_del_sistema_nervoso);
   let patOcchio = trueFlag(patch.patologie_malattie_dell_occhio_e_degli_annessi_oculari);
   let patOrecchio = trueFlag(patch.patologie_malattie_dell_orecchio_e_del_processo_mastoideo);
@@ -319,6 +351,7 @@ export async function PATCH(
     patSangue = false;
     patEndocrine = false;
     patDisturbi = false;
+    patCardiopatie = false;
     patNervoso = false;
     patOcchio = false;
     patOrecchio = false;
@@ -341,6 +374,7 @@ export async function PATCH(
         patSangue ? "Malattie del sangue e degli organi ematopoietici e alcuni disturbi del sistema immunitario" : null,
         patEndocrine ? "Malattie endocrine, nutrizionali e metaboliche" : null,
         patDisturbi ? "Disturbi psichici e comportamentali" : null,
+        patCardiopatie ? "Cardiopatie" : null,
         patNervoso ? "Malattie del sistema nervoso" : null,
         patOcchio ? "Malattie dell'occhio e degli annessi oculari" : null,
         patOrecchio ? "Malattie dell'orecchio e del processo mastoideo" : null,
@@ -417,6 +451,28 @@ export async function PATCH(
     patch.tipo_di_reddito_invalidita = "No";
     patch.tipo_di_reddito_reddito_di_inclusione = "No";
     patch.tipo_di_reddito_reddito_da_lavoro = "No";
+  }
+
+  if (patch.siamo_ancora_in_contatto === "Sì" && !patch.chi_e_in_contatto) {
+    return NextResponse.json(
+      { error: "Se siamo ancora in contatto, indica chi è in contatto." },
+      { status: 400 }
+    );
+  }
+
+  if (patch.siamo_ancora_in_contatto === "No") {
+    patch.chi_e_in_contatto = null;
+  }
+
+  if (patch.ha_gia_fatto_domanda_di_casa_popolare === "Sì" && !patch.data_domanda_casa_popolare) {
+    return NextResponse.json(
+      { error: "Se ha già fatto domanda di casa popolare, indica 'In data'." },
+      { status: 400 }
+    );
+  }
+
+  if (patch.ha_gia_fatto_domanda_di_casa_popolare === "No") {
+    patch.data_domanda_casa_popolare = null;
   }
 
   const { data, error } = await supabase.rpc("update_guest_profile_with_audit", {

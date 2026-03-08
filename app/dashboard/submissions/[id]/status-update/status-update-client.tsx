@@ -8,6 +8,7 @@ import {
   CAUSA_USCITA_OPTIONS,
   DECESSO_CAUSA_USCITA,
   DECESSO_DOVE_DORME,
+  DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
   DOVE_DORME_OPTIONS,
   PATOLOGIA_PSICHIATRICA_OPTIONS,
@@ -39,6 +40,13 @@ type StatusUpdateInitialValues = {
   dove_dorme: string | null;
   ha_residenza: string | null;
   ha_un_reddito: string | null;
+  al_momento_dell_ingresso_ha_i_seguenti_documenti: string | null;
+  al_momento_dell_uscita_ha_i_seguenti_documenti: string | null;
+  siamo_ancora_in_contatto: string | null;
+  chi_e_in_contatto: string | null;
+  ha_i_requisiti_per_fare_la_domanda_di_casa_popolare: string | null;
+  ha_gia_fatto_domanda_di_casa_popolare: string | null;
+  data_domanda_casa_popolare: string | null;
   al_momento_dell_uscita_ha_residenza: string | null;
   al_momento_dell_uscita_ha_un_reddito: string | null;
   dipendenze: string | null;
@@ -132,6 +140,25 @@ function normalizeExclusiveSelections(options: readonly string[], selected: stri
   return unique;
 }
 
+function normalizeOptionValue(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’`]/g, "'")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeTokensToAllowed(value: string | null | undefined, options: readonly string[]): string[] {
+  return splitCsvValues(value)
+    .map((token) => {
+      const normalized = normalizeOptionValue(token);
+      return options.find((option) => normalizeOptionValue(option) === normalized) ?? null;
+    })
+    .filter((item): item is string => Boolean(item));
+}
+
 function initForm(initialValues: StatusUpdateInitialValues): StatusUpdateFormValues {
   const dependencySelections = normalizeExclusiveSelections(DIPENDENZE_OPTIONS, [
     initialValues.dipendenze_alcolismo === "Sì" || initialValues.dipendenze_alcolismo === "Si"
@@ -162,16 +189,37 @@ function initForm(initialValues: StatusUpdateInitialValues): StatusUpdateFormVal
     causa_decesso_followup: "",
     ha_residenza: initialValues.ha_residenza ?? "",
     ha_un_reddito: normalizeYesNo(initialValues.ha_un_reddito),
+    al_momento_dell_ingresso_ha_i_seguenti_documenti: toCsvValue(
+      normalizeTokensToAllowed(
+        initialValues.al_momento_dell_ingresso_ha_i_seguenti_documenti,
+        DOCUMENTI_OPTIONS
+      )
+    ),
     tipo_di_reddito_followup: "",
     tipo_di_lavoro_followup: "",
     data_uscita: "",
     causa_uscita: "",
     data_decesso: "",
     causa_decesso: "",
+    al_momento_dell_uscita_ha_i_seguenti_documenti: toCsvValue(
+      normalizeTokensToAllowed(
+        initialValues.al_momento_dell_uscita_ha_i_seguenti_documenti,
+        DOCUMENTI_OPTIONS
+      )
+    ),
     al_momento_dell_uscita_ha_residenza: initialValues.al_momento_dell_uscita_ha_residenza ?? "",
     al_momento_dell_uscita_ha_un_reddito: normalizeYesNo(initialValues.al_momento_dell_uscita_ha_un_reddito),
     tipo_di_reddito_uscita: "",
     tipo_di_lavoro_uscita: "",
+    siamo_ancora_in_contatto: normalizeYesNo(initialValues.siamo_ancora_in_contatto),
+    chi_e_in_contatto: initialValues.chi_e_in_contatto ?? "",
+    ha_i_requisiti_per_fare_la_domanda_di_casa_popolare: normalizeYesNo(
+      initialValues.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare
+    ),
+    ha_gia_fatto_domanda_di_casa_popolare: normalizeYesNo(
+      initialValues.ha_gia_fatto_domanda_di_casa_popolare
+    ),
+    data_domanda_casa_popolare: normalizeToIsoDate(initialValues.data_domanda_casa_popolare),
     data_rientro: "",
     rientro_stessa_struttura: "",
     struttura_rientro: "",
@@ -207,6 +255,12 @@ export default function StatusUpdateClient({
 
   const selectedFollowUpIncome = splitCsvValues(form.tipo_di_reddito_followup);
   const selectedExitIncome = splitCsvValues(form.tipo_di_reddito_uscita);
+  const selectedDocumentiIngresso = splitCsvValues(
+    form.al_momento_dell_ingresso_ha_i_seguenti_documenti
+  );
+  const selectedDocumentiUscita = splitCsvValues(
+    form.al_momento_dell_uscita_ha_i_seguenti_documenti
+  );
   const selectedDependencies = splitCsvValues(form.dipendenze);
   const selectedPathologies = splitCsvValues(form.patologie);
 
@@ -219,6 +273,8 @@ export default function StatusUpdateClient({
   const needsExitWorkType = hasExitIncome && selectedExitIncome.includes("Reddito da lavoro");
   const needsReentryStructure =
     updateType === "reentry" && form.rientro_stessa_struttura === "No";
+  const needsChiEInContatto = form.siamo_ancora_in_contatto === "Sì";
+  const needsDataDomandaCasaPopolare = form.ha_gia_fatto_domanda_di_casa_popolare === "Sì";
 
   useEffect(() => {
     if (availableUpdateTypes.length > 0 && !availableUpdateTypes.includes(updateType)) {
@@ -724,6 +780,172 @@ export default function StatusUpdateClient({
                 Struttura di rientro: {currentStruttura || "n/d"}
               </p>
             ) : null}
+          </div>
+        ) : null}
+
+        {updateType === "followup" || updateType === "exit" ? (
+          <div style={{ ...sectionGridStyle, marginTop: 12 }}>
+            <div
+              style={{
+                display: "grid",
+                gap: 6,
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                padding: 10,
+                gridColumn: "1 / -1",
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>Al momento dell&apos;ingresso ha i seguenti documenti</span>
+              <div
+                style={{
+                  display: "grid",
+                  gap: 8,
+                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                }}
+              >
+                {DOCUMENTI_OPTIONS.map((option) => (
+                  <label key={`doc-ingresso-${option}`} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedDocumentiIngresso.includes(option)}
+                      onChange={() =>
+                        setField(
+                          "al_momento_dell_ingresso_ha_i_seguenti_documenti",
+                          toggleCsvOption(
+                            form.al_momento_dell_ingresso_ha_i_seguenti_documenti,
+                            option,
+                            DOCUMENTI_OPTIONS
+                          )
+                        )
+                      }
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 6,
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                padding: 10,
+                gridColumn: "1 / -1",
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>Al momento dell&apos;uscita ha i seguenti documenti</span>
+              <div
+                style={{
+                  display: "grid",
+                  gap: 8,
+                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                }}
+              >
+                {DOCUMENTI_OPTIONS.map((option) => (
+                  <label key={`doc-uscita-${option}`} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedDocumentiUscita.includes(option)}
+                      onChange={() =>
+                        setField(
+                          "al_momento_dell_uscita_ha_i_seguenti_documenti",
+                          toggleCsvOption(
+                            form.al_momento_dell_uscita_ha_i_seguenti_documenti,
+                            option,
+                            DOCUMENTI_OPTIONS
+                          )
+                        )
+                      }
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <label style={{ display: "grid", gap: 4 }}>
+              <span>Siamo ancora in contatto</span>
+              <select
+                value={form.siamo_ancora_in_contatto}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    siamo_ancora_in_contatto: value,
+                    chi_e_in_contatto: value === "Sì" ? prev.chi_e_in_contatto : "",
+                  }));
+                }}
+              >
+                <option value="">Seleziona...</option>
+                {REDDITO_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 4 }}>
+              <span>Chi è in contatto</span>
+              <input
+                value={form.chi_e_in_contatto}
+                onChange={(event) => setField("chi_e_in_contatto", event.target.value)}
+                disabled={!needsChiEInContatto}
+                placeholder="Indica persona/referente"
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4 }}>
+              <span>Ha i requisiti per fare la domanda di casa popolare</span>
+              <select
+                value={form.ha_i_requisiti_per_fare_la_domanda_di_casa_popolare}
+                onChange={(event) =>
+                  setField("ha_i_requisiti_per_fare_la_domanda_di_casa_popolare", event.target.value)
+                }
+              >
+                <option value="">Seleziona...</option>
+                {REDDITO_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 4 }}>
+              <span>Ha già fatto domanda di casa popolare</span>
+              <select
+                value={form.ha_gia_fatto_domanda_di_casa_popolare}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    ha_gia_fatto_domanda_di_casa_popolare: value,
+                    data_domanda_casa_popolare:
+                      value === "Sì" ? prev.data_domanda_casa_popolare : "",
+                  }));
+                }}
+              >
+                <option value="">Seleziona...</option>
+                {REDDITO_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 4 }}>
+              <span>In data</span>
+              <input
+                type="date"
+                value={form.data_domanda_casa_popolare}
+                onChange={(event) => setField("data_domanda_casa_popolare", event.target.value)}
+                disabled={!needsDataDomandaCasaPopolare}
+              />
+            </label>
           </div>
         ) : null}
       </div>
