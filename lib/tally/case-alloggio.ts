@@ -261,17 +261,6 @@ export function mapCaseAlloggioSubmission(payload: TallyPayload) {
     )
   );
 
-  if (
-    isTruthySelection(
-      answersByNormalizedHeader.get(normalizeHeader("Patologie (Cardiopatie)"))
-    )
-  ) {
-    const patologieWithCardiopatie = mergeSelectedOptions(row.patologie, ["Cardiopatie"], [
-      "Cardiopatie",
-    ]);
-    row.patologie = toCsv(Array.from(new Set([...splitCsv(row.patologie), ...patologieWithCardiopatie])));
-  }
-
   const ownerEmail =
     normalizeEmail(row.contatto_compilatore) ??
     normalizeEmail(row.contatto_della_persona);

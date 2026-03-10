@@ -98,7 +98,6 @@ export const PATOLOGIE_OPTIONS = [
   "Malattie del sangue e degli organi ematopoietici e alcuni disturbi del sistema immunitario",
   "Malattie endocrine, nutrizionali e metaboliche",
   "Disturbi psichici e comportamentali",
-  "Cardiopatie",
   "Malattie del sistema nervoso",
   "Malattie dell'occhio e degli annessi oculari",
   "Malattie dell'orecchio e del processo mastoideo",

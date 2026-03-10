@@ -5,6 +5,7 @@ import { getGuestTimeline, type GuestTimelineEvent } from "@/lib/guests/server";
 import { GUEST_STATUS_LABEL } from "@/lib/guests/schema";
 import { getCurrentStatus } from "@/lib/guests/status";
 import DeleteGuestButton from "./delete-guest-button";
+import ModificaAggiornaHelp from "./modifica-aggiorna-help";
 
 export const dynamic = "force-dynamic";
 
@@ -346,12 +347,12 @@ export default async function SubmissionDetailPage({
           marginTop: "0.75rem",
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "flex-start",
+          alignItems: "center",
           gap: 12,
           flexWrap: "wrap",
         }}
       >
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span
             style={{
               display: "inline-flex",
@@ -381,8 +382,9 @@ export default async function SubmissionDetailPage({
               <button type="button">Aggiorna lo stato</button>
             </Link>
           )}
+          <ModificaAggiornaHelp />
         </div>
-        <div style={{ marginLeft: "auto" }}>
+        <div style={{ marginLeft: "auto", alignSelf: "center" }}>
           <DeleteGuestButton guestId={row.id} />
         </div>
       </div>

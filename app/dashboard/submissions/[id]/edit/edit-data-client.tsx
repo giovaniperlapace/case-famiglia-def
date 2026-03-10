@@ -1096,20 +1096,6 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
                   <span>{item.label}</span>
                 </label>
               ))}
-              <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                <input
-                  type="checkbox"
-                  checked={selectedPatologie.includes("Cardiopatie")}
-                  onChange={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      patologie: toggleCsvOption(prev.patologie, "Cardiopatie", PATOLOGIE_OPTIONS),
-                      patologie_nessuna: "false",
-                    }))
-                  }
-                />
-                <span>Cardiopatie</span>
-              </label>
             </div>
           </div>
         </div>

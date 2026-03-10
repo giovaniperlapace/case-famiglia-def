@@ -55,9 +55,9 @@ export default function DeleteGuestButton({ guestId }: DeleteGuestButtonProps) {
           padding: "0.55rem 0.85rem",
           boxShadow: "0 1px 2px rgba(185, 28, 28, 0.28)",
         }}
-        title="Elimina record"
+        title="Elimina"
       >
-        {loading ? "Eliminazione..." : "🗑 Elimina record"}
+        {loading ? "Eliminazione..." : "🗑 Elimina"}
       </button>
       {error ? (
         <p style={{ margin: "8px 0 0", color: "var(--danger)" }}>

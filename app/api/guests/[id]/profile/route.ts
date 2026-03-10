@@ -311,7 +311,6 @@ export async function PATCH(
   let patSangue = trueFlag(patch.patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123);
   let patEndocrine = trueFlag(patch.patologie_malattie_endocrine_nutrizionali_e_metaboliche);
   let patDisturbi = trueFlag(patch.patologie_disturbi_psichici_e_comportamentali);
-  let patCardiopatie = pathologyTokens.includes("Cardiopatie");
   let patNervoso = trueFlag(patch.patologie_malattie_del_sistema_nervoso);
   let patOcchio = trueFlag(patch.patologie_malattie_dell_occhio_e_degli_annessi_oculari);
   let patOrecchio = trueFlag(patch.patologie_malattie_dell_orecchio_e_del_processo_mastoideo);
@@ -351,7 +350,6 @@ export async function PATCH(
     patSangue = false;
     patEndocrine = false;
     patDisturbi = false;
-    patCardiopatie = false;
     patNervoso = false;
     patOcchio = false;
     patOrecchio = false;
@@ -374,7 +372,6 @@ export async function PATCH(
         patSangue ? "Malattie del sangue e degli organi ematopoietici e alcuni disturbi del sistema immunitario" : null,
         patEndocrine ? "Malattie endocrine, nutrizionali e metaboliche" : null,
         patDisturbi ? "Disturbi psichici e comportamentali" : null,
-        patCardiopatie ? "Cardiopatie" : null,
         patNervoso ? "Malattie del sistema nervoso" : null,
         patOcchio ? "Malattie dell'occhio e degli annessi oculari" : null,
         patOrecchio ? "Malattie dell'orecchio e del processo mastoideo" : null,
