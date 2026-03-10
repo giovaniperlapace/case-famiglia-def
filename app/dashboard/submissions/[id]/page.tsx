@@ -307,7 +307,7 @@ export default async function SubmissionDetailPage({
     isTruthy(row.patologie_malattie_del_sistema_nervoso) ? "Malattie del sistema nervoso" : null,
     isTruthy(row.patologie_malattie_dell_occhio_e_degli_annessi_oculari) ? "Malattie dell'occhio e annessi" : null,
     isTruthy(row.patologie_malattie_dell_orecchio_e_del_processo_mastoideo) ? "Malattie dell'orecchio e mastoideo" : null,
-    isTruthy(row.patologie_malattie_del_sistema_circolatorio) ? "Malattie del sistema circolatorio" : null,
+    isTruthy(row.patologie_malattie_del_sistema_circolatorio) ? "Malattie del sistema cardio-circolatorio" : null,
     isTruthy(row.patologie_malattie_del_sistema_respiratorio) ? "Malattie del sistema respiratorio" : null,
     isTruthy(row.patologie_malattie_dell_apparato_digerente) ? "Malattie dell'apparato digerente" : null,
     isTruthy(row.patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo) ? "Malattie della pelle e tessuto sottocutaneo" : null,

@@ -333,7 +333,7 @@ export async function PATCH(
   if (!patNervoso && pathologyTokens.includes("Malattie del sistema nervoso")) patNervoso = true;
   if (!patOcchio && pathologyTokens.includes("Malattie dell'occhio e degli annessi oculari")) patOcchio = true;
   if (!patOrecchio && pathologyTokens.includes("Malattie dell'orecchio e del processo mastoideo")) patOrecchio = true;
-  if (!patCircolatorio && pathologyTokens.includes("Malattie del sistema circolatorio")) patCircolatorio = true;
+  if (!patCircolatorio && pathologyTokens.includes("Malattie del sistema cardio-circolatorio")) patCircolatorio = true;
   if (!patRespiratorio && pathologyTokens.includes("Malattie del sistema respiratorio")) patRespiratorio = true;
   if (!patDigerente && pathologyTokens.includes("Malattie dell'apparato digerente")) patDigerente = true;
   if (!patPelle && pathologyTokens.includes("Malattie della pelle e del tessuto sottocutaneo")) patPelle = true;
@@ -375,7 +375,7 @@ export async function PATCH(
         patNervoso ? "Malattie del sistema nervoso" : null,
         patOcchio ? "Malattie dell'occhio e degli annessi oculari" : null,
         patOrecchio ? "Malattie dell'orecchio e del processo mastoideo" : null,
-        patCircolatorio ? "Malattie del sistema circolatorio" : null,
+        patCircolatorio ? "Malattie del sistema cardio-circolatorio" : null,
         patRespiratorio ? "Malattie del sistema respiratorio" : null,
         patDigerente ? "Malattie dell'apparato digerente" : null,
         patPelle ? "Malattie della pelle e del tessuto sottocutaneo" : null,

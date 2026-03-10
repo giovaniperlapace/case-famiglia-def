@@ -101,7 +101,7 @@ export const PATOLOGIE_OPTIONS = [
   "Malattie del sistema nervoso",
   "Malattie dell'occhio e degli annessi oculari",
   "Malattie dell'orecchio e del processo mastoideo",
-  "Malattie del sistema circolatorio",
+  "Malattie del sistema cardio-circolatorio",
   "Malattie del sistema respiratorio",
   "Malattie dell'apparato digerente",
   "Malattie della pelle e del tessuto sottocutaneo",

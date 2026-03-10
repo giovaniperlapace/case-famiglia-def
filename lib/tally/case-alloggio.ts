@@ -75,7 +75,7 @@ export const CASE_ALLOGGIO_HEADER_TO_COLUMN = {
     "patologie_malattie_dell_occhio_e_degli_annessi_oculari",
   "Patologie (Malattie dell’orecchio e del processo mastoideo)":
     "patologie_malattie_dell_orecchio_e_del_processo_mastoideo",
-  "Patologie (Malattie del sistema circolatorio)":
+  "Patologie (Malattie del sistema cardio-circolatorio)":
     "patologie_malattie_del_sistema_circolatorio",
   "Patologie (Malattie del sistema respiratorio)":
     "patologie_malattie_del_sistema_respiratorio",

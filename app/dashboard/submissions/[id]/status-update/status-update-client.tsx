@@ -105,7 +105,7 @@ const PATOLOGIE_FLAG_MAPPING = [
   { option: "Malattie del sistema nervoso", key: "patologie_malattie_del_sistema_nervoso" },
   { option: "Malattie dell'occhio e degli annessi oculari", key: "patologie_malattie_dell_occhio_e_degli_annessi_oculari" },
   { option: "Malattie dell'orecchio e del processo mastoideo", key: "patologie_malattie_dell_orecchio_e_del_processo_mastoideo" },
-  { option: "Malattie del sistema circolatorio", key: "patologie_malattie_del_sistema_circolatorio" },
+  { option: "Malattie del sistema cardio-circolatorio", key: "patologie_malattie_del_sistema_circolatorio" },
   { option: "Malattie del sistema respiratorio", key: "patologie_malattie_del_sistema_respiratorio" },
   { option: "Malattie dell'apparato digerente", key: "patologie_malattie_dell_apparato_digerente" },
   { option: "Malattie della pelle e del tessuto sottocutaneo", key: "patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo" },
