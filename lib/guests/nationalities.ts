@@ -138,6 +138,7 @@ const RAW_NATIONALITY_OPTIONS = [
   "Perù",
   "Pitcairn",
   "Polinesia Francese",
+  "Polonia",
   "Porto Rico",
   "Qatar",
   "Repubblica Centro Africana",
