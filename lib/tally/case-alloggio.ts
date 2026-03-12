@@ -116,7 +116,8 @@ const NORMALIZED_HEADER_TO_COLUMN = new Map<string, string>(
 function normalizeEmail(value: string | null): string | null {
   if (!value) return null;
   const normalized = value.trim().toLowerCase();
-  return normalized.length > 0 ? normalized : null;
+  if (normalized.length === 0) return null;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ? normalized : null;
 }
 
 function toNullable(value: unknown): string | null {
@@ -261,9 +262,7 @@ export function mapCaseAlloggioSubmission(payload: TallyPayload) {
     )
   );
 
-  const ownerEmail =
-    normalizeEmail(row.contatto_compilatore) ??
-    normalizeEmail(row.contatto_della_persona);
+  const ownerEmail = normalizeEmail(row.contatto_compilatore);
 
   return {
     row,
