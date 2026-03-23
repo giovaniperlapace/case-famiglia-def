@@ -203,3 +203,27 @@ export const NATIONALITY_OPTIONS = [
 ] as const;
 
 export const NATIONALITY_SET = new Set<string>(NATIONALITY_OPTIONS);
+
+function normalizeNationalityKey(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’`]/g, "'")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const NATIONALITY_BY_NORMALIZED_KEY = new Map<
+  string,
+  (typeof NATIONALITY_OPTIONS)[number]
+>(
+  NATIONALITY_OPTIONS.map((option) => [normalizeNationalityKey(option), option])
+);
+
+export function normalizeNationality(
+  value: string | null | undefined
+): (typeof NATIONALITY_OPTIONS)[number] | null {
+  if (!value) return null;
+  return NATIONALITY_BY_NORMALIZED_KEY.get(normalizeNationalityKey(value)) ?? null;
+}

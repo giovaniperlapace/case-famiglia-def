@@ -1,4 +1,5 @@
 import { extractTallyAnswers, normalizeText, type TallyPayload } from "@/lib/tally/webhook";
+import { normalizeNationality } from "@/lib/guests/nationalities";
 import { DOCUMENTI_OPTIONS } from "@/lib/guests/status-update-options";
 
 export const CASE_ALLOGGIO_HEADER_TO_COLUMN = {
@@ -233,6 +234,7 @@ export function mapCaseAlloggioSubmission(payload: TallyPayload) {
     row.submitted_at ??
     toNullable(payload.data?.createdAt ?? payload.createdAt);
   row.id_utente = row.id_utente ?? extractHiddenUserId(payload, answers);
+  row.nazionalita = normalizeNationality(row.nazionalita) ?? row.nazionalita;
 
   const documentiIngressoFromFlags = DOCUMENTI_OPTIONS.filter((option) => {
     const normalizedHeader = normalizeHeader(

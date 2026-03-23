@@ -42,3 +42,15 @@ test("owner_email stays null when compiler contact is not an email", () => {
   const mapped = mapCaseAlloggioSubmission(payload);
   assert.equal(mapped.ownerEmail, null);
 });
+
+test("mapped nationality is normalized to the canonical option list", () => {
+  const payload = {
+    data: {
+      submissionId: "sub_4",
+      fields: [{ label: "Nazionalità", value: "ITALIA" }],
+    },
+  };
+
+  const mapped = mapCaseAlloggioSubmission(payload);
+  assert.equal(mapped.row.nazionalita, "Italia");
+});

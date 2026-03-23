@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { NATIONALITY_OPTIONS } from "@/lib/guests/nationalities";
+import { NATIONALITY_OPTIONS, normalizeNationality } from "@/lib/guests/nationalities";
 import {
   DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
@@ -173,7 +173,7 @@ function initForm(initialValues: EditableGuestValues): EditableForm {
     data_di_nascita: normalizeToIsoDate(initialValues.data_di_nascita ?? ""),
     luogo_di_nascita: initialValues.luogo_di_nascita ?? "",
     sesso_della_persona: initialValues.sesso_della_persona ?? "",
-    nazionalita: initialValues.nazionalita ?? "",
+    nazionalita: normalizeNationality(initialValues.nazionalita) ?? initialValues.nazionalita ?? "",
     contatto_della_persona: toE164(initialValues.contatto_della_persona ?? "") || "+39",
     data_ingresso: normalizeToIsoDate(initialValues.data_ingresso ?? ""),
     e_gia_stato_in_un_accoglienza_della_comunita: normalizeYesNo(
@@ -398,7 +398,7 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
       return "Il contatto deve essere un telefono valido in formato internazionale, es. +3932678766.";
     }
 
-    if (form.nazionalita && !isAllowed(NATIONALITY_OPTIONS, form.nazionalita)) {
+    if (form.nazionalita && !normalizeNationality(form.nazionalita)) {
       return "Seleziona una nazionalità valida dall'elenco.";
     }
 
@@ -598,6 +598,7 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
         data_di_nascita: form.data_di_nascita ? isoToItalianDate(form.data_di_nascita) : "",
         data_ingresso: form.data_ingresso ? isoToItalianDate(form.data_ingresso) : "",
         contatto_della_persona: toE164(form.contatto_della_persona),
+        nazionalita: normalizeNationality(form.nazionalita) ?? form.nazionalita.trim(),
       };
 
       const response = await fetch(`/api/guests/${guestId}/profile`, {

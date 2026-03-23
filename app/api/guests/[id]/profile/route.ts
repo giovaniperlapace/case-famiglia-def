@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerAuthContext } from "@/lib/auth/server";
-import { NATIONALITY_SET } from "@/lib/guests/nationalities";
+import { normalizeNationality } from "@/lib/guests/nationalities";
 import {
   DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
@@ -176,11 +176,15 @@ export async function PATCH(
     );
   }
 
-  if (patch.nazionalita && !NATIONALITY_SET.has(patch.nazionalita)) {
-    return NextResponse.json(
-      { error: "Nazionalità non valida. Seleziona un valore dall'elenco previsto." },
-      { status: 400 }
-    );
+  if (patch.nazionalita) {
+    const normalizedNationality = normalizeNationality(patch.nazionalita);
+    if (!normalizedNationality) {
+      return NextResponse.json(
+        { error: "Nazionalità non valida. Seleziona un valore dall'elenco previsto." },
+        { status: 400 }
+      );
+    }
+    patch.nazionalita = normalizedNationality;
   }
 
   if (patch.sesso_della_persona && !SEX_OPTIONS.has(patch.sesso_della_persona)) {
