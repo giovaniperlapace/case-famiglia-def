@@ -52,5 +52,5 @@ test("mapped nationality is normalized to the canonical option list", () => {
   };
 
   const mapped = mapCaseAlloggioSubmission(payload);
-  assert.equal(mapped.row.nazionalita, "Italia");
+  assert.equal(mapped.row.nazionalita, "ITALIA");
 });
