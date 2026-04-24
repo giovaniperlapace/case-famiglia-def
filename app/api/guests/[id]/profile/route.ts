@@ -176,6 +176,10 @@ export async function PATCH(
     );
   }
 
+  if (patch.data_domanda_casa_popolare === "") {
+    patch.data_domanda_casa_popolare = null;
+  }
+
   if (patch.nazionalita) {
     const normalizedNationality = normalizeNationality(patch.nazionalita);
     if (!normalizedNationality) {
@@ -463,13 +467,6 @@ export async function PATCH(
 
   if (patch.siamo_ancora_in_contatto === "No") {
     patch.chi_e_in_contatto = null;
-  }
-
-  if (patch.ha_gia_fatto_domanda_di_casa_popolare === "Sì" && !patch.data_domanda_casa_popolare) {
-    return NextResponse.json(
-      { error: "Se ha già fatto domanda di casa popolare, indica 'In data'." },
-      { status: 400 }
-    );
   }
 
   if (patch.ha_gia_fatto_domanda_di_casa_popolare === "No") {

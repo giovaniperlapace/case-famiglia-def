@@ -497,7 +497,11 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
       return "Il campo domanda casa popolare accetta solo Sì/No.";
     }
 
-    if (needsDataDomandaCasaPopolare && !isValidIsoDate(form.data_domanda_casa_popolare)) {
+    if (
+      needsDataDomandaCasaPopolare &&
+      form.data_domanda_casa_popolare &&
+      !isValidIsoDate(form.data_domanda_casa_popolare)
+    ) {
       return "In data non valida.";
     }
 
