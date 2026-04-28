@@ -11,9 +11,10 @@ function sanitizeNextPath(input: string | null): string | null {
   return input;
 }
 
-async function resolveDefaultPostLoginPath() {
+async function resolveAuthorizedPostLoginPath() {
   const supabase = createSupabaseBrowserClient();
   const { data: role } = await supabase.rpc("current_user_role");
+  if (!role) return null;
   return role === "admin" ? "/admin" : "/dashboard";
 }
 
@@ -40,7 +41,14 @@ function AuthCallbackContent() {
 
         // Avoid transient false negatives from an immediate getSession()
         // right after successful code exchange.
-        const destination = explicitNextPath ?? (await resolveDefaultPostLoginPath());
+        const defaultDestination = await resolveAuthorizedPostLoginPath();
+        if (!defaultDestination) {
+          await supabase.auth.signOut();
+          router.replace("/login?error=not_registered");
+          return;
+        }
+
+        const destination = explicitNextPath ?? defaultDestination;
         router.replace(destination);
         return;
       }
@@ -54,7 +62,14 @@ function AuthCallbackContent() {
         return;
       }
 
-      const destination = explicitNextPath ?? (await resolveDefaultPostLoginPath());
+      const defaultDestination = await resolveAuthorizedPostLoginPath();
+      if (!defaultDestination) {
+        await supabase.auth.signOut();
+        router.replace("/login?error=not_registered");
+        return;
+      }
+
+      const destination = explicitNextPath ?? defaultDestination;
       router.replace(destination);
     }
 

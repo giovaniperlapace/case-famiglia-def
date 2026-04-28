@@ -12,9 +12,10 @@ function sanitizeNextPath(input: string | null): string | null {
   return input;
 }
 
-async function resolveDefaultPostLoginPath() {
+async function resolveAuthorizedPostLoginPath() {
   const supabase = createSupabaseBrowserClient();
   const { data: role } = await supabase.rpc("current_user_role");
+  if (!role) return null;
   return role === "admin" ? "/admin" : "/dashboard";
 }
 
@@ -38,7 +39,18 @@ function LoginContent() {
         data: { session },
       } = await supabase.auth.getSession();
       if (session?.user) {
-        const destination = explicitNextPath ?? (await resolveDefaultPostLoginPath());
+        const defaultDestination = await resolveAuthorizedPostLoginPath();
+        if (!defaultDestination) {
+          await supabase.auth.signOut();
+          setMessage(
+            "Questo indirizzo email non risulta registrato. Rivolgiti all'amministratore per essere registrato, oppure accedi con un altro indirizzo email."
+          );
+          setStatus("error");
+          setIsCheckingSession(false);
+          return;
+        }
+
+        const destination = explicitNextPath ?? defaultDestination;
         router.replace(destination);
         return;
       }
@@ -50,7 +62,9 @@ function LoginContent() {
   }, [explicitNextPath, router]);
 
   const authErrorMessage =
-    !isCheckingSession && searchParams.get("error") === "auth"
+    !isCheckingSession && searchParams.get("error") === "not_registered"
+      ? "Questo indirizzo email non risulta registrato. Rivolgiti all'amministratore per essere registrato, oppure accedi con un altro indirizzo email."
+      : !isCheckingSession && searchParams.get("error") === "auth"
       ? "Sessione non valida o scaduta. Richiedi un nuovo magic link."
       : null;
   const visibleMessage = message ?? authErrorMessage;
@@ -72,8 +86,26 @@ function LoginContent() {
         callbackUrl.searchParams.set("next", explicitNextPath);
       }
 
+      const checkResponse = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!checkResponse.ok) {
+        const result = (await checkResponse.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setStatus("error");
+        setMessage(
+          result?.error ??
+            "Non è stato possibile verificare questo indirizzo email. Riprova tra poco."
+        );
+        return;
+      }
+
       const { error } = await supabase.auth.signInWithOtp({
-        email,
+        email: email.trim().toLowerCase(),
         options: {
           emailRedirectTo: callbackUrl.toString(),
         },
@@ -86,10 +118,10 @@ function LoginContent() {
       }
 
       setStatus("sent");
-      setMessage("Magic link sent. Check your email.");
+      setMessage("Magic link inviato. Controlla la tua email.");
     } catch {
       setStatus("error");
-      setMessage("Unable to send login link.");
+      setMessage("Non è stato possibile inviare il link di accesso.");
     }
   }
 
@@ -132,7 +164,7 @@ function LoginContent() {
             border: "none",
           }}
         >
-          {status === "loading" ? "Sending..." : "Send magic link"}
+          {status === "loading" ? "Invio in corso..." : "Invia magic link"}
         </button>
       </form>
       {visibleMessage ? (
