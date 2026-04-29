@@ -406,7 +406,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                         flexShrink: 0,
                       }}
                     >
-                      👁
+                      ✏️
                     </Link>
                   </div>
                 </td>
