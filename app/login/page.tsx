@@ -75,45 +75,22 @@ function LoginContent() {
     setStatus("loading");
     setMessage(null);
 
-    const appBaseUrl =
-      process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "") ||
-      window.location.origin;
-
     try {
-      const supabase = createSupabaseBrowserClient();
-      const callbackUrl = new URL("/auth/callback", appBaseUrl);
-      if (explicitNextPath) {
-        callbackUrl.searchParams.set("next", explicitNextPath);
-      }
-
-      const checkResponse = await fetch("/api/auth/check-email", {
+      const response = await fetch("/api/auth/login/magic-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, next: explicitNextPath }),
       });
 
-      if (!checkResponse.ok) {
-        const result = (await checkResponse.json().catch(() => null)) as {
-          error?: string;
-        } | null;
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as
+          | { message?: string }
+          | null;
         setStatus("error");
         setMessage(
-          result?.error ??
+          result?.message ??
             "Non è stato possibile verificare questo indirizzo email. Riprova tra poco."
         );
-        return;
-      }
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: callbackUrl.toString(),
-        },
-      });
-
-      if (error) {
-        setStatus("error");
-        setMessage(error.message);
         return;
       }
 

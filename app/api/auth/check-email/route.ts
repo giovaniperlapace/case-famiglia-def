@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServiceClient } from "@/lib/supabase/service";
+import { checkLoginAccess } from "@/lib/auth/login-access";
 
 type CheckEmailBody = {
-  email?: string | null;
+  email?: unknown;
 };
-
-function normalizeEmail(value: string | null | undefined) {
-  return value?.trim().toLowerCase() ?? "";
-}
 
 export async function POST(req: Request) {
   let body: CheckEmailBody;
@@ -17,31 +13,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const email = normalizeEmail(body.email);
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    return NextResponse.json({ error: "Invalid email" }, { status: 400 });
-  }
-
-  const supabase = createSupabaseServiceClient();
-  const { data: appUser, error } = await supabase
-    .from("app_utenti")
-    .select("id")
-    .ilike("email", email)
-    .eq("attivo", true)
-    .maybeSingle();
-
-  if (error) {
-    return NextResponse.json({ error: "Email check failed" }, { status: 500 });
-  }
-
-  if (!appUser) {
+  const result = await checkLoginAccess(body.email);
+  if (!result.ok) {
     return NextResponse.json(
       {
-        code: "email_not_registered",
-        error:
-          "Questo indirizzo email non risulta registrato. Rivolgiti all'amministratore per essere registrato, oppure accedi con un altro indirizzo email.",
+        code: result.code,
+        error: result.message ?? "Non è stato possibile verificare questo indirizzo email.",
       },
-      { status: 403 }
+      { status: result.status }
     );
   }
 

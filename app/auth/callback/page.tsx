@@ -2,7 +2,24 @@
 
 import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { EmailOtpType } from "@supabase/supabase-js";
+import {
+  clearSupabaseBrowserSessionStorage,
+  createSupabaseBrowserClient,
+} from "@/lib/supabase/client";
+
+const OTP_TYPES: readonly EmailOtpType[] = [
+  "signup",
+  "magiclink",
+  "recovery",
+  "invite",
+  "email",
+  "email_change",
+];
+
+function isOtpType(value: string | null): value is EmailOtpType {
+  return Boolean(value && OTP_TYPES.includes(value as EmailOtpType));
+}
 
 function sanitizeNextPath(input: string | null): string | null {
   if (!input) return null;
@@ -29,7 +46,15 @@ function AuthCallbackContent() {
 
     async function run() {
       const code = searchParams.get("code");
+      const tokenHash = searchParams.get("token_hash");
+      const token = searchParams.get("token");
+      const otpType = searchParams.get("type");
       const explicitNextPath = sanitizeNextPath(searchParams.get("next"));
+
+      if (code || tokenHash || token) {
+        clearSupabaseBrowserSessionStorage();
+      }
+
       const supabase = createSupabaseBrowserClient();
 
       if (code) {
@@ -41,6 +66,28 @@ function AuthCallbackContent() {
 
         // Avoid transient false negatives from an immediate getSession()
         // right after successful code exchange.
+        const defaultDestination = await resolveAuthorizedPostLoginPath();
+        if (!defaultDestination) {
+          await supabase.auth.signOut();
+          router.replace("/login?error=not_registered");
+          return;
+        }
+
+        const destination = explicitNextPath ?? defaultDestination;
+        router.replace(destination);
+        return;
+      }
+
+      if ((tokenHash || token) && isOtpType(otpType)) {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash ?? token ?? "",
+          type: otpType,
+        });
+        if (error) {
+          router.replace("/login?error=auth");
+          return;
+        }
+
         const defaultDestination = await resolveAuthorizedPostLoginPath();
         if (!defaultDestination) {
           await supabase.auth.signOut();
