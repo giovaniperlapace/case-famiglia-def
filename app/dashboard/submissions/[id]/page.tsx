@@ -499,6 +499,12 @@ export default async function SubmissionDetailPage({
                   : event.from_status ?? event.to_status ?? "n/d";
               const payload = event.payload ?? {};
               const summary =
+                payload.struttura_trasferimento && payload.struttura_origine
+                  ? `Trasferimento: ${payload.struttura_origine} -> ${payload.struttura_trasferimento}`
+                  : payload.struttura_trasferimento
+                    ? `Trasferimento verso ${payload.struttura_trasferimento}`
+                    : null;
+              const fallbackSummary =
                 (payload.causa_uscita as string | undefined) ||
                 (payload.causa_decesso as string | undefined) ||
                 (payload.note as string | undefined) ||
@@ -512,7 +518,7 @@ export default async function SubmissionDetailPage({
                   <p className="muted" style={{ margin: "4px 0 0" }}>
                     Data evento: {event.effective_date ?? "n/d"} | Creato: {event.created_at}
                   </p>
-                  <p style={{ margin: "6px 0 0" }}>{summary}</p>
+                  <p style={{ margin: "6px 0 0" }}>{summary ?? fallbackSummary}</p>
                   <details style={{ marginTop: 6 }}>
                     <summary style={{ cursor: "pointer" }}>View details</summary>
                     <pre style={{ margin: "8px 0 0", overflowX: "auto" }}>

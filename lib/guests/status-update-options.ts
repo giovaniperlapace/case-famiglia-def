@@ -1,9 +1,9 @@
-export const UPDATE_TYPE_OPTIONS = ["followup", "exit", "death", "reentry"] as const;
+export const UPDATE_TYPE_OPTIONS = ["followup", "exit", "death", "reentry", "transfer"] as const;
 export type UpdateTypeOption = (typeof UPDATE_TYPE_OPTIONS)[number];
 
 export const RIENTRO_STESSA_STRUTTURA_OPTIONS = ["Sì", "No"] as const;
 
-export const STRUTTURA_RIENTRO_OPTIONS = [
+export const STRUTTURA_OPTIONS = [
   "Buon Pastore",
   "San Calisto",
   "Villetta",
@@ -12,6 +12,9 @@ export const STRUTTURA_RIENTRO_OPTIONS = [
   "Caio Manilio",
   "Via dei Campani",
 ] as const;
+
+export const STRUTTURA_RIENTRO_OPTIONS = STRUTTURA_OPTIONS;
+export const STRUTTURA_TRASFERIMENTO_OPTIONS = STRUTTURA_OPTIONS;
 
 export const DOVE_DORME_OPTIONS = [
   "Strada",

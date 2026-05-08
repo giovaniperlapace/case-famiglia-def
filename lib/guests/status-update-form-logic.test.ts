@@ -34,6 +34,8 @@ function baseForm(): StatusUpdateFormValues {
     data_rientro: "",
     rientro_stessa_struttura: "",
     struttura_rientro: "",
+    data_trasferimento: "",
+    struttura_trasferimento: "",
     dipendenze: "",
     patologie: "",
     patologia_psichiatrica: "",
@@ -131,6 +133,41 @@ test("payload builder preserves historical update semantics by update type", () 
   assert.equal(reentryPayload.data_rientro, "2026-03-04");
   assert.equal(reentryPayload.rientro_stessa_struttura, "Sì");
   assert.equal(reentryPayload.struttura_rientro, "San Calisto");
+
+  const transferForm = {
+    ...baseForm(),
+    data_trasferimento: "2026-03-05",
+    struttura_trasferimento: "Villetta",
+  };
+  const transferPayload = buildStatusUpdatePayload("transfer", transferForm, "San Calisto");
+  assert.equal(transferPayload.data_trasferimento, "2026-03-05");
+  assert.equal(transferPayload.struttura_origine, "San Calisto");
+  assert.equal(transferPayload.struttura_trasferimento, "Villetta");
+});
+
+test("transfer requires date and a valid target structure", () => {
+  const missingDate = {
+    ...baseForm(),
+    struttura_trasferimento: "Villetta",
+  };
+  assert.equal(validateStatusUpdateForm("transfer", missingDate), "Data trasferimento obbligatoria.");
+
+  const invalidTarget = {
+    ...baseForm(),
+    data_trasferimento: "2026-03-05",
+    struttura_trasferimento: "Struttura non censita",
+  };
+  assert.equal(
+    validateStatusUpdateForm("transfer", invalidTarget),
+    "Struttura di destinazione non valida."
+  );
+
+  const valid = {
+    ...baseForm(),
+    data_trasferimento: "2026-03-05",
+    struttura_trasferimento: "Villetta",
+  };
+  assert.equal(validateStatusUpdateForm("transfer", valid), null);
 });
 
 test("followup validates conditional contact/housing fields and emits them in payload", () => {

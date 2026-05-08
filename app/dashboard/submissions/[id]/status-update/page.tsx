@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentStatus } from "@/lib/guests/status";
 import { type GuestStatus } from "@/lib/guests/schema";
+import { STRUTTURA_TRASFERIMENTO_OPTIONS } from "@/lib/guests/status-update-options";
 import StatusUpdateClient from "./status-update-client";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,7 @@ export default async function SubmissionStatusUpdatePage({
         guestId={data.id}
         currentStatus={currentStatus}
         currentStruttura={data.struttura ?? ""}
+        availableStructures={[...STRUTTURA_TRASFERIMENTO_OPTIONS]}
         initialValues={{
           data_ultimo_contatto: data.data_ultimo_contatto,
           dove_dorme: data.dove_dorme,

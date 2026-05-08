@@ -12,12 +12,13 @@ import {
   SI_NO_OPTIONS,
   RIENTRO_STESSA_STRUTTURA_OPTIONS,
   STRUTTURA_RIENTRO_OPTIONS,
+  STRUTTURA_TRASFERIMENTO_OPTIONS,
   TIPO_LAVORO_OPTIONS,
   TIPO_REDDITO_OPTIONS,
   normalizePatologiaPsichiatrica,
 } from "./status-update-options.ts";
 
-export type StatusUpdateType = "followup" | "exit" | "death" | "reentry";
+export type StatusUpdateType = "followup" | "exit" | "death" | "reentry" | "transfer";
 
 export type StatusUpdateFormValues = {
   data_ultimo_contatto: string;
@@ -46,6 +47,8 @@ export type StatusUpdateFormValues = {
   data_rientro: string;
   rientro_stessa_struttura: string;
   struttura_rientro: string;
+  data_trasferimento: string;
+  struttura_trasferimento: string;
   dipendenze: string;
   patologie: string;
   patologia_psichiatrica: string;
@@ -355,6 +358,15 @@ export function validateStatusUpdateForm(
       }
     }
 
+    if (updateType === "transfer") {
+      validateRequiredIsoDate(form.data_trasferimento, "Data trasferimento");
+      validateAllowed(
+        form.struttura_trasferimento,
+        STRUTTURA_TRASFERIMENTO_OPTIONS,
+        "Struttura di destinazione non valida."
+      );
+    }
+
     return null;
   } catch (error) {
     return error instanceof Error ? error.message : "Dati del form non validi.";
@@ -484,10 +496,17 @@ export function buildStatusUpdatePayload(
     return payload;
   }
 
-  payload.data_rientro = form.data_rientro;
-  payload.rientro_stessa_struttura = form.rientro_stessa_struttura;
-  payload.struttura_rientro =
-    form.rientro_stessa_struttura === "Sì" ? currentStruttura : form.struttura_rientro;
+  if (updateType === "reentry") {
+    payload.data_rientro = form.data_rientro;
+    payload.rientro_stessa_struttura = form.rientro_stessa_struttura;
+    payload.struttura_rientro =
+      form.rientro_stessa_struttura === "Sì" ? currentStruttura : form.struttura_rientro;
+    return payload;
+  }
+
+  payload.data_trasferimento = form.data_trasferimento;
+  payload.struttura_origine = currentStruttura;
+  payload.struttura_trasferimento = form.struttura_trasferimento;
 
   return payload;
 }

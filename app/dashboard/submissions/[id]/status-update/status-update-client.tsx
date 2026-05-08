@@ -17,6 +17,7 @@ import {
   RESIDENZA_OPTIONS,
   RIENTRO_STESSA_STRUTTURA_OPTIONS,
   STRUTTURA_RIENTRO_OPTIONS,
+  STRUTTURA_TRASFERIMENTO_OPTIONS,
   TIPO_LAVORO_OPTIONS,
   TIPO_REDDITO_OPTIONS,
   normalizePatologiaPsichiatrica,
@@ -80,6 +81,7 @@ type StatusUpdateClientProps = {
   guestId: string;
   currentStatus: GuestStatus;
   currentStruttura: string;
+  availableStructures: string[];
   initialValues: StatusUpdateInitialValues;
 };
 
@@ -88,6 +90,7 @@ const UPDATE_TYPE_LABELS: Record<UpdateTypeOption, string> = {
   exit: "Uscita",
   death: "Deceduto",
   reentry: "Rientro",
+  transfer: "Trasferimento in altra accoglienza",
 };
 
 const PATOLOGIE_FLAG_MAPPING = [
@@ -223,6 +226,8 @@ function initForm(initialValues: StatusUpdateInitialValues): StatusUpdateFormVal
     data_rientro: "",
     rientro_stessa_struttura: "",
     struttura_rientro: "",
+    data_trasferimento: "",
+    struttura_trasferimento: "",
     dipendenze: toCsvValue(dependencySelections),
     patologie: toCsvValue(pathologySelections),
     patologia_psichiatrica: normalizePatologiaPsichiatrica(initialValues.patologia_psichiatrica) ?? "",
@@ -234,14 +239,22 @@ export default function StatusUpdateClient({
   guestId,
   currentStatus,
   currentStruttura,
+  availableStructures,
   initialValues,
 }: StatusUpdateClientProps) {
   const router = useRouter();
   const availableUpdateTypes = useMemo<UpdateTypeOption[]>(() => {
     if (currentStatus === "USCITO") return ["followup", "death", "reentry"];
-    if (currentStatus === "IN_ACCOGLIENZA") return ["followup", "exit"];
+    if (currentStatus === "IN_ACCOGLIENZA") return ["followup", "exit", "transfer"];
     return [];
   }, [currentStatus]);
+  const transferStructureOptions = useMemo(
+    () =>
+      availableStructures.length > 0
+        ? availableStructures
+        : [...STRUTTURA_TRASFERIMENTO_OPTIONS],
+    [availableStructures]
+  );
 
   const [updateType, setUpdateType] = useState<UpdateTypeOption>(
     availableUpdateTypes[0] ?? "followup"
@@ -320,7 +333,7 @@ export default function StatusUpdateClient({
         return;
       }
 
-      router.push(`/dashboard/submissions/${guestId}`);
+      router.push(updateType === "transfer" ? "/dashboard" : `/dashboard/submissions/${guestId}`);
       router.refresh();
     } catch {
       setError("Errore inatteso durante il salvataggio dell'evento.");
@@ -780,6 +793,40 @@ export default function StatusUpdateClient({
                 Struttura di rientro: {currentStruttura || "n/d"}
               </p>
             ) : null}
+          </div>
+        ) : null}
+
+        {updateType === "transfer" ? (
+          <div style={sectionGridStyle}>
+            <label style={{ display: "grid", gap: 4 }}>
+              <span>Data trasferimento</span>
+              <input
+                type="date"
+                value={form.data_trasferimento}
+                onChange={(event) => setField("data_trasferimento", event.target.value)}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4 }}>
+              <span>Accoglienza di destinazione</span>
+              <select
+                value={form.struttura_trasferimento}
+                onChange={(event) => setField("struttura_trasferimento", event.target.value)}
+              >
+                <option value="">Seleziona...</option>
+                {transferStructureOptions
+                  .filter((option) => option !== currentStruttura)
+                  .map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+              </select>
+            </label>
+
+            <p className="muted" style={{ margin: 0 }}>
+              Struttura attuale: {currentStruttura || "n/d"}
+            </p>
           </div>
         ) : null}
 

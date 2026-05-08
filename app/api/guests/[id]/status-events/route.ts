@@ -21,6 +21,7 @@ import {
   RIENTRO_STESSA_STRUTTURA_OPTIONS,
   RESIDENZA_OPTIONS,
   STRUTTURA_RIENTRO_OPTIONS,
+  STRUTTURA_TRASFERIMENTO_OPTIONS,
   TIPO_LAVORO_OPTIONS,
   isAffirmative,
   isAllowedOption,
@@ -28,7 +29,7 @@ import {
 } from "@/lib/guests/status-update-options";
 
 type EventBody = {
-  updateType?: "followup" | "medical" | "exit" | "death" | "reentry";
+  updateType?: "followup" | "medical" | "exit" | "death" | "reentry" | "transfer";
   effectiveDate?: string | null;
   payload?: Record<string, unknown>;
 };
@@ -149,14 +150,18 @@ export async function POST(
   }
 
   const updateTypeRaw = body.updateType;
-  if (!updateTypeRaw || !["followup", "medical", "exit", "death", "reentry"].includes(updateTypeRaw)) {
+  if (
+    !updateTypeRaw ||
+    !["followup", "medical", "exit", "death", "reentry", "transfer"].includes(updateTypeRaw)
+  ) {
     return NextResponse.json({ error: "Invalid update type" }, { status: 400 });
   }
   const updateType = (updateTypeRaw === "medical" ? "followup" : updateTypeRaw) as
     | "followup"
     | "exit"
     | "death"
-    | "reentry";
+    | "reentry"
+    | "transfer";
 
   const { data: guestRow, error: guestError } = await supabase
     .from("case_alloggio_submissions")
@@ -177,7 +182,7 @@ export async function POST(
     currentStatus === "USCITO"
       ? new Set(["followup", "death", "reentry"])
       : currentStatus === "IN_ACCOGLIENZA"
-        ? new Set(["followup", "exit"])
+        ? new Set(["followup", "exit", "transfer"])
         : new Set<string>();
 
   if (!allowedUpdateTypes.has(updateType)) {
@@ -322,7 +327,7 @@ export async function POST(
         "Causa decesso non valida"
       );
       effectiveDate = toIsoDateStart(deathDate);
-    } else {
+    } else if (updateType === "reentry") {
       const reentryDate = requireIsoDate(rawPayload.data_rientro ?? body.effectiveDate, "Data rientro obbligatoria");
       const sameStruttura = requireAllowed(
         RIENTRO_STESSA_STRUTTURA_OPTIONS,
@@ -360,6 +365,28 @@ export async function POST(
       eventType = "STATUS_CHANGE";
       toStatus = "IN_ACCOGLIENZA";
       effectiveDate = toIsoDateStart(reentryDate);
+    } else {
+      const transferDate = requireIsoDate(
+        rawPayload.data_trasferimento ?? body.effectiveDate,
+        "Data trasferimento obbligatoria"
+      );
+      const currentStruttura = toNullableTrimmed(guestRow.struttura);
+      const targetStruttura = requireAllowed(
+        STRUTTURA_TRASFERIMENTO_OPTIONS,
+        rawPayload.struttura_trasferimento,
+        "Struttura di destinazione non valida"
+      );
+
+      if (currentStruttura && currentStruttura.toLowerCase() === targetStruttura.toLowerCase()) {
+        throw new Error("La struttura di destinazione deve essere diversa da quella attuale");
+      }
+
+      payload.data_trasferimento = transferDate;
+      payload.struttura_origine = currentStruttura ?? "";
+      payload.struttura_trasferimento = targetStruttura;
+      eventType = "STATUS_CHANGE";
+      toStatus = "IN_ACCOGLIENZA";
+      effectiveDate = toIsoDateStart(transferDate);
     }
   } catch (validationError) {
     return NextResponse.json(

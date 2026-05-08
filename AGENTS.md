@@ -91,6 +91,44 @@ The app must be secure by default:
   - sets default `ruolo = responsabile_casa`
 - There are also newer guest/status/audit migrations in `supabase/migrations/`; inspect the latest ones before changing guest behavior.
 
+## Applying Migrations To Self-Hosted Supabase
+- Never print database passwords, JWT keys, service role keys, or full connection strings.
+- Preferred first attempt: use Supabase CLI with a direct DB URL if the target Postgres accepts the CLI connection:
+  - open an SSH tunnel to the target DB container if needed
+  - run `supabase db push --db-url "$DB_URL" --dry-run`
+  - if the dry-run is correct, run `supabase db push --db-url "$DB_URL"`
+- Current self-hosted target detail:
+  - SSH host: `root@178.105.59.79`
+  - DB container: `supabase-db-nt8ib6ylya0gyvwhu9zpuq9z`
+  - DB name/user: `postgres` / `postgres`
+- Known caveat: the current self-hosted Postgres container refused TLS during the 2026-05-08 migration apply, while Supabase CLI attempted TLS even with `sslmode=disable`. When this happens, use the reliable SSH + Docker + `psql` pattern below.
+- Reliable fallback for one or more local migration files:
+  ```bash
+  ssh root@178.105.59.79 \
+    'docker exec -i supabase-db-nt8ib6ylya0gyvwhu9zpuq9z psql --single-transaction --set ON_ERROR_STOP=1 -U postgres -d postgres' \
+    < supabase/migrations/<migration-file>.sql
+  ```
+- After applying with `psql`, ensure Supabase migration history exists and record the applied migration version/name:
+  ```bash
+  ssh root@178.105.59.79 \
+    'docker exec -i supabase-db-nt8ib6ylya0gyvwhu9zpuq9z psql --single-transaction --set ON_ERROR_STOP=1 -U postgres -d postgres' <<'SQL'
+  create schema if not exists supabase_migrations;
+  create table if not exists supabase_migrations.schema_migrations (version text not null primary key);
+  alter table supabase_migrations.schema_migrations add column if not exists name text;
+  alter table supabase_migrations.schema_migrations add column if not exists statements text[];
+  insert into supabase_migrations.schema_migrations(version, name, statements)
+  values ('<yyyymmddhhmmss>', '<migration_name_without_timestamp>', array[]::text[])
+  on conflict (version) do update
+  set name = excluded.name,
+      statements = excluded.statements;
+  SQL
+  ```
+- If the history table was absent or incomplete on the self-hosted DB, backfill all local migration filenames into `supabase_migrations.schema_migrations` after confirming the schema already includes those changes. This prevents future `supabase db push` runs from trying to replay old migrations.
+- Verify after applying:
+  - query `supabase_migrations.schema_migrations` for the new version
+  - inspect the changed function/table/policy directly with `psql`
+  - run app validation locally when code depends on the migration
+
 ## Import Scripts
 - Legacy Tally guest import:
   - `scripts/import-legacy-case-alloggio.rb`
