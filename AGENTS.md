@@ -39,6 +39,13 @@ The app must be secure by default:
   - `admin`: broad access
   - `manager`: broader read access if explicitly enabled by policy
   - `responsabile_casa`: only assigned shelters
+- Status/ownership workflow:
+  - `IN_ACCOGLIENZA`: the guest is managed by coordinators assigned to `case_alloggio_submissions.struttura`
+  - `USCITO`: the guest can be re-entered into one of the current coordinator's assigned shelters from duplicate detection
+  - `DECEDUTO`: status updates are disabled
+  - Transfers between shelters keep the guest `IN_ACCOGLIENZA`, change `struttura`, and must be recorded in `guest_status_events`
+- Duplicate checks for new registrations intentionally search names across all shelters, but only through server-side controlled APIs/RPCs. Do not widen normal RLS dashboard access to all guests.
+- If a duplicate is `IN_ACCOGLIENZA` in another shelter, the new shelter coordinator should request a transfer by email to the current shelter coordinators instead of directly taking over the record.
 
 ## Current Architecture
 - Next.js app with Supabase SSR/browser/service clients.
@@ -57,6 +64,15 @@ The app must be secure by default:
 - Guest status/domain helpers:
   - `lib/guests/status.ts`
   - `lib/guests/schema.ts`
+- Guest detail and timeline UI:
+  - `app/dashboard/submissions/[id]/page.tsx`
+  - Timeline events should be displayed with user-facing Italian labels, not raw enum values: e.g. `Cambio stato`, `In accoglienza`, `Uscito`, `Deceduto`
+  - Timeline dates should be shown as `dd/mm/yyyy`; keep raw JSON only inside the collapsible technical details
+- New-registration duplicate and cross-shelter handoff flow:
+  - `app/dashboard/new-registration/new-registration-client.tsx`
+  - `app/api/guests/check-duplicates/route.ts`
+  - `app/api/guests/[id]/duplicate-reentry/route.ts`
+  - `app/api/guests/[id]/transfer-request/route.ts`
 - Dashboard/API read from `case_alloggio_submissions`, not from legacy `submissions`.
 
 ## Auth State
@@ -89,6 +105,12 @@ The app must be secure by default:
 - `20260304195000_app_utenti_add_contact_fields_and_default_role.sql`
   - adds `nome`, `cognome`, `telefono`
   - sets default `ruolo = responsabile_casa`
+- `20260508120000_guest_transfer_updates_structure.sql`
+  - updates `create_guest_status_event` so transfers can change `struttura` while keeping `IN_ACCOGLIENZA`
+- `20260508143000_duplicate_reentry_rpc.sql`
+  - adds `create_duplicate_reentry` for controlled re-entry of `USCITO` duplicates into one of the current coordinator's shelters
+- `20260508160000_fix_status_event_null_current_status_fallback.sql`
+  - fixes `create_guest_status_event` so rows with null `current_status` derive status from `data_uscita` / `data_decesso` before deciding whether a re-entry changes the main record
 - There are also newer guest/status/audit migrations in `supabase/migrations/`; inspect the latest ones before changing guest behavior.
 
 ## Applying Migrations To Self-Hosted Supabase

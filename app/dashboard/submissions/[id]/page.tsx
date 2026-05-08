@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getGuestTimeline, type GuestTimelineEvent } from "@/lib/guests/server";
-import { GUEST_STATUS_LABEL } from "@/lib/guests/schema";
+import { GUEST_STATUS_LABEL, type GuestStatus } from "@/lib/guests/schema";
 import { getCurrentStatus } from "@/lib/guests/status";
 import DeleteGuestButton from "./delete-guest-button";
 import ModificaAggiornaHelp from "./modifica-aggiorna-help";
@@ -94,6 +94,61 @@ function formatValue(value: string | null | undefined): string {
     return `${day}/${month}/${year}`;
   }
   return trimmed;
+}
+
+function formatTimelineDate(value: string | null | undefined): string {
+  if (!value) return "n/d";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return formatValue(value);
+  return new Intl.DateTimeFormat("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(parsed);
+}
+
+function formatTimelineDateTime(value: string | null | undefined): string {
+  if (!value) return "n/d";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return formatValue(value);
+  return new Intl.DateTimeFormat("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function formatStatusLabel(value: string | null | undefined): string {
+  if (!value) return "n/d";
+  if (value in GUEST_STATUS_LABEL) {
+    return GUEST_STATUS_LABEL[value as GuestStatus];
+  }
+  return value
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatEventType(value: string): string {
+  if (value === "STATUS_CHANGE") return "Cambio stato";
+  if (value === "MEDICAL_UPDATE") return "Aggiornamento";
+  return value
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatTransition(event: GuestTimelineEvent): string {
+  if (event.to_status && event.from_status !== event.to_status) {
+    return `${formatStatusLabel(event.from_status)} -> ${formatStatusLabel(event.to_status)}`;
+  }
+  return formatStatusLabel(event.to_status ?? event.from_status);
 }
 
 function isTruthy(value: string | null | undefined): boolean {
@@ -493,10 +548,7 @@ export default async function SubmissionDetailPage({
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
             {timeline.map((event) => {
-              const transition =
-                event.to_status && event.from_status !== event.to_status
-                  ? `${event.from_status ?? "n/d"} -> ${event.to_status}`
-                  : event.from_status ?? event.to_status ?? "n/d";
+              const transition = formatTransition(event);
               const payload = event.payload ?? {};
               const summary =
                 payload.struttura_trasferimento && payload.struttura_origine
@@ -513,14 +565,15 @@ export default async function SubmissionDetailPage({
               return (
                 <div key={event.id} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
                   <p style={{ margin: 0, fontWeight: 700 }}>
-                    {event.event_type} | {transition}
+                    {formatEventType(event.event_type)} | {transition}
                   </p>
                   <p className="muted" style={{ margin: "4px 0 0" }}>
-                    Data evento: {event.effective_date ?? "n/d"} | Creato: {event.created_at}
+                    Data evento: {formatTimelineDate(event.effective_date)} | Registrato:{" "}
+                    {formatTimelineDateTime(event.created_at)}
                   </p>
                   <p style={{ margin: "6px 0 0" }}>{summary ?? fallbackSummary}</p>
                   <details style={{ marginTop: 6 }}>
-                    <summary style={{ cursor: "pointer" }}>View details</summary>
+                    <summary style={{ cursor: "pointer" }}>Dettagli tecnici</summary>
                     <pre style={{ margin: "8px 0 0", overflowX: "auto" }}>
                       {JSON.stringify(payload, null, 2)}
                     </pre>
