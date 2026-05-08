@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { getServerAuthContext } from "@/lib/auth/server";
+import { getCurrentStatus } from "@/lib/guests/status";
+import { STRUTTURA_OPTIONS } from "@/lib/guests/status-update-options";
+import { createSupabaseServiceClient } from "@/lib/supabase/service";
 
 type CandidateRow = {
+  id: string;
   nome_della_persona: string | null;
   cognome: string | null;
   struttura: string | null;
   submitted_at: string | null;
+  current_status: string | null;
+  data_uscita: string | null;
+  data_decesso: string | null;
+  tipo_aggiornamento: string | null;
 };
 
 function normalizeText(value: string): string {
@@ -69,9 +77,13 @@ function scoreSimilarity(
 }
 
 export async function POST(req: Request) {
-  const { supabase, user } = await getServerAuthContext();
+  const { supabase, user, role, appUserId } = await getServerAuthContext();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!role) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   let body: { nome?: string; cognome?: string } = {};
@@ -88,9 +100,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Nome e cognome sono obbligatori." }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const serviceSupabase = createSupabaseServiceClient();
+  let assignedStructures: string[] = [];
+
+  if (role === "admin" || role === "manager") {
+    assignedStructures = [...STRUTTURA_OPTIONS];
+  } else if (appUserId) {
+    const { data: structuresData } = await supabase
+      .from("app_utenti_strutture")
+      .select("struttura")
+      .eq("utente_id", appUserId)
+      .order("struttura", { ascending: true });
+
+    assignedStructures = (structuresData ?? [])
+      .map((item) => item.struttura)
+      .filter((item): item is string => Boolean(item));
+  }
+
+  const { data, error } = await serviceSupabase
     .from("case_alloggio_submissions")
-    .select("nome_della_persona,cognome,struttura,submitted_at")
+    .select(
+      "id,nome_della_persona,cognome,struttura,submitted_at,current_status,data_uscita,data_decesso,tipo_aggiornamento"
+    )
     .not("nome_della_persona", "is", null)
     .not("cognome", "is", null)
     .order("submitted_at", { ascending: false });
@@ -117,10 +148,12 @@ export async function POST(req: Request) {
       const personCognome = row.cognome ?? "";
       const { similarity, exact } = scoreSimilarity(nome, cognome, personNome, personCognome);
       return {
+        id: row.id,
         nome: personNome,
         cognome: personCognome,
         struttura: row.struttura,
         submitted_at: row.submitted_at,
+        current_status: getCurrentStatus(row),
         similarity,
         exact,
       };
@@ -132,5 +165,5 @@ export async function POST(req: Request) {
     })
     .slice(0, 8);
 
-  return NextResponse.json({ matches });
+  return NextResponse.json({ matches, assignedStructures });
 }
