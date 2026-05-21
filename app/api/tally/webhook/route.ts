@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentStatus } from "@/lib/guests/status";
 import { createSupabaseServiceClient } from "@/lib/supabase/service";
 import { mapCaseAlloggioSubmission } from "@/lib/tally/case-alloggio";
 import {
@@ -144,8 +145,19 @@ export async function POST(req: Request) {
   }
 
   try {
+    const currentStatus = getCurrentStatus(mapped.row);
+    const statusDefaults =
+      currentStatus === "IN_ACCOGLIENZA"
+        ? {}
+        : {
+            current_status: currentStatus,
+            current_status_at: mapped.submittedAt ?? new Date().toISOString(),
+            deceased_at:
+              currentStatus === "DECEDUTO" ? mapped.submittedAt ?? new Date().toISOString() : null,
+          };
     const baseRow = {
       ...mapped.row,
+      ...statusDefaults,
       id_utente: mapped.row.id_utente ?? null,
       owner_email: mapped.ownerEmail ?? null,
       raw_payload: payload,
