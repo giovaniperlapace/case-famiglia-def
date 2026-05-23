@@ -1,0 +1,1 @@
+export const APP_LAST_UPDATE_ISO = "2026-05-23T09:36:35+02:00";
