@@ -4,6 +4,11 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { NATIONALITY_OPTIONS, normalizeNationality } from "@/lib/guests/nationalities";
 import {
+  POVERTA_OPTIONS,
+  getAllowedPovertyCauses,
+  hasUnsupportedPovertyCauses,
+} from "@/lib/guests/profile-edit-values";
+import {
   DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
   DOVE_DORME_OPTIONS,
@@ -46,17 +51,6 @@ const PATOLOGIE_CHECKBOXES = [
   { label: "Nessuna", key: "patologie_nessuna" as const },
   { label: "Altro", key: "patologie_altro" as const },
 ] as const;
-const POVERTA_OPTIONS = [
-  "Economica",
-  "Sociale",
-  "Psicosi",
-  "Alcolismo",
-  "Dipendenza",
-  "Ludopatia",
-  "Salute",
-  "Altro",
-] as const;
-
 type EditableGuestValues = {
   nome_della_persona: string | null;
   cognome: string | null;
@@ -329,6 +323,7 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nameChangeConfirmed, setNameChangeConfirmed] = useState(false);
+  const [povertyCausesTouched, setPovertyCausesTouched] = useState(false);
 
   const initialName = (initialValues.nome_della_persona ?? "").trim();
   const initialSurname = (initialValues.cognome ?? "").trim();
@@ -339,7 +334,10 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
   }, [form.cognome, form.nome_della_persona, initialName, initialSurname]);
 
   const hasIngressoIncome = form.al_momento_dell_ingresso_ha_un_reddito === "Sì";
-  const selectedPovertyCauses = splitCsvValues(form.principale_causa_poverta);
+  const selectedPovertyCauses = getAllowedPovertyCauses(form.principale_causa_poverta);
+  const hasLegacyPovertyCauses = hasUnsupportedPovertyCauses(form.principale_causa_poverta);
+  const shouldPreservePovertyCauses =
+    !povertyCausesTouched && (hasLegacyPovertyCauses || selectedPovertyCauses.length > 2);
   const selectedDocumentiIngresso = normalizeTokensToAllowed(
     form.al_momento_dell_ingresso_ha_i_seguenti_documenti,
     DOCUMENTI_OPTIONS
@@ -441,8 +439,9 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
     }
 
     if (
-      selectedPovertyCauses.some((cause) => !isAllowed(POVERTA_OPTIONS, cause)) ||
-      selectedPovertyCauses.length > 2
+      povertyCausesTouched &&
+      (selectedPovertyCauses.some((cause) => !isAllowed(POVERTA_OPTIONS, cause)) ||
+        selectedPovertyCauses.length > 2)
     ) {
       return "Principale causa povertà: seleziona massimo 2 opzioni valide.";
     }
@@ -550,7 +549,7 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
     setLoading(true);
 
     try {
-      const payload: EditableForm = {
+      const payload: Partial<EditableForm> = {
         ...form,
         tipo_di_reddito: hasIngressoIncome ? selectedIngressoIncomeTypes.join(", ") : "",
         tipo_di_reddito_pensione: hasIngressoIncome ? form.tipo_di_reddito_pensione : "No",
@@ -604,6 +603,12 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
         contatto_della_persona: toE164(form.contatto_della_persona),
         nazionalita: normalizeNationality(form.nazionalita) ?? form.nazionalita.trim(),
       };
+
+      if (shouldPreservePovertyCauses) {
+        delete payload.principale_causa_poverta;
+      } else {
+        payload.principale_causa_poverta = selectedPovertyCauses.join(", ");
+      }
 
       const response = await fetch(`/api/guests/${guestId}/profile`, {
         method: "PATCH",
@@ -842,7 +847,8 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
                         checked={checked}
                         disabled={disabled}
                         onChange={(e) => {
-                          const current = splitCsvValues(form.principale_causa_poverta);
+                          setPovertyCausesTouched(true);
+                          const current = selectedPovertyCauses;
                           const next = e.target.checked
                             ? [...current, option]
                             : current.filter((item) => item !== option);

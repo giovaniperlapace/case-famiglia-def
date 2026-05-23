@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerAuthContext } from "@/lib/auth/server";
 import { normalizeNationality } from "@/lib/guests/nationalities";
+import { POVERTA_OPTIONS } from "@/lib/guests/profile-edit-values";
 import {
   DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
@@ -72,16 +73,7 @@ const ALLOWED_FIELDS = new Set([
 
 const SEX_OPTIONS = new Set(["Uomo", "Donna", "Altro"]);
 const YES_NO_OPTIONS = new Set(["Sì", "No"]);
-const POVERTA_OPTIONS = new Set([
-  "Economica",
-  "Sociale",
-  "Psicosi",
-  "Alcolismo",
-  "Dipendenza",
-  "Ludopatia",
-  "Salute",
-  "Altro",
-]);
+const POVERTA_OPTION_SET: ReadonlySet<string> = new Set(POVERTA_OPTIONS);
 
 function isValidItalianDate(value: string): boolean {
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return false;
@@ -256,7 +248,7 @@ export async function PATCH(
 
   if (patch.principale_causa_poverta) {
     const causes = splitCsvValues(patch.principale_causa_poverta);
-    if (causes.length > 2 || causes.some((cause) => !POVERTA_OPTIONS.has(cause))) {
+    if (causes.length > 2 || causes.some((cause) => !POVERTA_OPTION_SET.has(cause))) {
       return NextResponse.json(
         { error: "Principale causa povertà non valida. Seleziona massimo 2 opzioni previste." },
         { status: 400 }
