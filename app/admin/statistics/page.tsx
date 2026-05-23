@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentStatus } from "@/lib/guests/status";
 
@@ -21,6 +22,35 @@ type IncompleteCounts = {
 
 function hasValue(value: string | null | undefined) {
   return Boolean(value?.trim());
+}
+
+function incompleteHref(casa: string | null, filter: string) {
+  const params = new URLSearchParams({ dati_incompleti: filter });
+  if (casa) params.set("struttura", casa);
+  return `/dashboard?${params.toString()}`;
+}
+
+function IncompleteCountLink({
+  casa,
+  count,
+  filter,
+  label,
+}: {
+  casa: string | null;
+  count: number;
+  filter: string;
+  label: string;
+}) {
+  return (
+    <Link
+      href={incompleteHref(casa, filter)}
+      aria-label={`${label}: ${count}`}
+      title={label}
+      style={{ color: "inherit", fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 3 }}
+    >
+      {count}
+    </Link>
+  );
 }
 
 export default async function AdminStatisticsPage() {
@@ -242,26 +272,56 @@ export default async function AdminStatisticsPage() {
                       {item.casa}
                     </td>
                     <td style={{ borderBottom: "1px solid var(--border)", padding: "8px 6px", textAlign: "right" }}>
-                      {item.missingBirthDate}
+                      <IncompleteCountLink
+                        casa={item.casa}
+                        count={item.missingBirthDate}
+                        filter="data_nascita"
+                        label={`${item.casa}: senza data di nascita`}
+                      />
                     </td>
                     <td style={{ borderBottom: "1px solid var(--border)", padding: "8px 6px", textAlign: "right" }}>
-                      {item.exitedWithoutExitDate}
+                      <IncompleteCountLink
+                        casa={item.casa}
+                        count={item.exitedWithoutExitDate}
+                        filter="data_uscita"
+                        label={`${item.casa}: uscito senza data uscita`}
+                      />
                     </td>
                     <td style={{ borderBottom: "1px solid var(--border)", padding: "8px 6px", textAlign: "right" }}>
-                      {item.deceasedWithoutDeathDate}
+                      <IncompleteCountLink
+                        casa={item.casa}
+                        count={item.deceasedWithoutDeathDate}
+                        filter="data_morte"
+                        label={`${item.casa}: deceduto senza data morte`}
+                      />
                     </td>
                   </tr>
                 ))}
                 <tr>
                   <td style={{ padding: "10px 6px 0", fontWeight: 700 }}>Totale</td>
                   <td style={{ padding: "10px 6px 0", fontWeight: 700, textAlign: "right" }}>
-                    {incompleteTotals.missingBirthDate}
+                    <IncompleteCountLink
+                      casa={null}
+                      count={incompleteTotals.missingBirthDate}
+                      filter="data_nascita"
+                      label="Totale: senza data di nascita"
+                    />
                   </td>
                   <td style={{ padding: "10px 6px 0", fontWeight: 700, textAlign: "right" }}>
-                    {incompleteTotals.exitedWithoutExitDate}
+                    <IncompleteCountLink
+                      casa={null}
+                      count={incompleteTotals.exitedWithoutExitDate}
+                      filter="data_uscita"
+                      label="Totale: uscito senza data uscita"
+                    />
                   </td>
                   <td style={{ padding: "10px 6px 0", fontWeight: 700, textAlign: "right" }}>
-                    {incompleteTotals.deceasedWithoutDeathDate}
+                    <IncompleteCountLink
+                      casa={null}
+                      count={incompleteTotals.deceasedWithoutDeathDate}
+                      filter="data_morte"
+                      label="Totale: deceduto senza data morte"
+                    />
                   </td>
                 </tr>
               </tbody>

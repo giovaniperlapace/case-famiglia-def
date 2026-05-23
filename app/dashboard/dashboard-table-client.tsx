@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { getCurrentStatus } from "@/lib/guests/status";
@@ -15,6 +16,7 @@ export type SubmissionRow = {
   nome_della_persona: string | null;
   cognome: string | null;
   tipo_aggiornamento: string | null;
+  data_di_nascita: string | null;
   data_uscita: string | null;
   data_decesso: string | null;
 };
@@ -35,6 +37,8 @@ type Filters = {
   submitted_at: string;
   updated_at: string;
 };
+
+type IncompleteFilter = "data_nascita" | "data_uscita" | "data_morte";
 
 type RowView = {
   row: SubmissionRow;
@@ -69,6 +73,29 @@ function toTimestamp(value: string | null) {
   const ts = Date.parse(value);
   return Number.isNaN(ts) ? 0 : ts;
 }
+
+function hasValue(value: string | null | undefined) {
+  return Boolean(value?.trim());
+}
+
+function getIncompleteFilter(value: string | null): IncompleteFilter | "" {
+  if (value === "data_nascita" || value === "data_uscita" || value === "data_morte") {
+    return value;
+  }
+  return "";
+}
+
+function getInitialStato(filter: IncompleteFilter | "") {
+  if (filter === "data_uscita") return "Uscito";
+  if (filter === "data_morte") return "Deceduto";
+  return "";
+}
+
+const INCOMPLETE_FILTER_LABEL: Record<IncompleteFilter, string> = {
+  data_nascita: "Senza data di nascita",
+  data_uscita: "Uscito senza data uscita",
+  data_morte: "Deceduto senza data morte",
+};
 
 const CELL_STYLE: CSSProperties = {
   borderBottom: "1px solid var(--border)",
@@ -113,12 +140,17 @@ const TABLE_TOOL_BUTTON_STYLE: CSSProperties = {
 };
 
 export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const strutturaParam = searchParams.get("struttura")?.trim() ?? "";
+  const incompleteFilter = getIncompleteFilter(searchParams.get("dati_incompleti"));
   const [sortKey, setSortKey] = useState<SortKey>("submitted_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [filters, setFilters] = useState<Filters>({
     guest: "",
-    strutture: [],
-    stato: "",
+    strutture: strutturaParam ? [strutturaParam] : [],
+    stato: getInitialStato(incompleteFilter),
     submitted_at: "",
     updated_at: "",
   });
@@ -171,6 +203,21 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
       if (filters.stato && item.stato !== filters.stato) {
         return false;
       }
+      if (incompleteFilter === "data_nascita" && hasValue(item.row.data_di_nascita)) {
+        return false;
+      }
+      if (
+        incompleteFilter === "data_uscita" &&
+        (item.stato !== "Uscito" || hasValue(item.row.data_uscita))
+      ) {
+        return false;
+      }
+      if (
+        incompleteFilter === "data_morte" &&
+        (item.stato !== "Deceduto" || hasValue(item.row.data_decesso))
+      ) {
+        return false;
+      }
       if (
         filters.submitted_at &&
         !item.submittedAtLabel
@@ -215,7 +262,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
     });
 
     return sorted;
-  }, [tableRows, filters, sortKey, sortDirection]);
+  }, [tableRows, filters, incompleteFilter, sortKey, sortDirection]);
 
   function setSort(nextKey: SortKey) {
     if (sortKey === nextKey) {
@@ -249,19 +296,27 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
         <button
           type="button"
           style={TABLE_TOOL_BUTTON_STYLE}
-          onClick={() =>
+          onClick={() => {
             setFilters({
               guest: "",
               strutture: [],
               stato: "",
               submitted_at: "",
               updated_at: "",
-            })
-          }
+            });
+            router.replace(pathname);
+          }}
         >
           Reset filtri
         </button>
       </div>
+
+      {incompleteFilter ? (
+        <p className="muted" style={{ margin: "0 0 0.75rem" }}>
+          Filtro da statistiche: {INCOMPLETE_FILTER_LABEL[incompleteFilter]}
+          {filters.strutture.length === 1 ? ` - ${filters.strutture[0]}` : ""}
+        </p>
+      ) : null}
 
       <div style={{ overflowX: "auto", marginTop: "0.5rem" }}>
         <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 940 }}>
