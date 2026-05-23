@@ -54,3 +54,19 @@ test("mapped nationality is normalized to the canonical option list", () => {
   const mapped = mapCaseAlloggioSubmission(payload);
   assert.equal(mapped.row.nazionalita, "ITALIA");
 });
+
+test("guest name and surname are normalized when mapped from Tally", () => {
+  const payload = {
+    data: {
+      submissionId: "sub_5",
+      fields: [
+        { label: "Nome della persona", value: "  MARIA   luisa " },
+        { label: "Cognome", value: "d'ANGELO-ROSSI" },
+      ],
+    },
+  };
+
+  const mapped = mapCaseAlloggioSubmission(payload);
+  assert.equal(mapped.row.nome_della_persona, "Maria Luisa");
+  assert.equal(mapped.row.cognome, "D'Angelo-Rossi");
+});

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerAuthContext } from "@/lib/auth/server";
+import { normalizePersonName } from "@/lib/guests/name-normalization";
 import { normalizeNationality } from "@/lib/guests/nationalities";
 import { POVERTA_OPTIONS } from "@/lib/guests/profile-edit-values";
 import {
@@ -145,6 +146,14 @@ export async function PATCH(
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "No editable fields provided" }, { status: 400 });
+  }
+
+  if ("nome_della_persona" in patch) {
+    patch.nome_della_persona = normalizePersonName(patch.nome_della_persona);
+  }
+
+  if ("cognome" in patch) {
+    patch.cognome = normalizePersonName(patch.cognome);
   }
 
   if (patch.data_di_nascita && !isValidItalianDate(patch.data_di_nascita)) {
