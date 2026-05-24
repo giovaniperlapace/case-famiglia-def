@@ -139,6 +139,19 @@ const TABLE_TOOL_BUTTON_STYLE: CSSProperties = {
   fontSize: "0.9rem",
 };
 
+const EDIT_LINK_STYLE: CSSProperties = {
+  width: 28,
+  height: 28,
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  background: "transparent",
+  color: "var(--muted)",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+};
+
 export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -443,26 +456,28 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
               <tr key={item.row.id}>
                 <td style={CELL_STYLE}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <strong>{item.guest}</strong>
                     <Link
                       href={`/dashboard/submissions/${item.row.id}`}
                       aria-label={`Apri dettaglio di ${item.guest}`}
                       title={`Dettaglio: ${item.guest}`}
-                      style={{
-                        width: 28,
-                        height: 28,
-                        border: "1px solid var(--border)",
-                        borderRadius: 8,
-                        background: "var(--panel)",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontWeight: 700,
-                        flexShrink: 0,
-                      }}
+                      style={EDIT_LINK_STYLE}
                     >
-                      ✏️
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        width="15"
+                        height="15"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
                     </Link>
+                    <strong>{item.guest}</strong>
                   </div>
                 </td>
                 <td style={CELL_STYLE}>{item.struttura}</td>
