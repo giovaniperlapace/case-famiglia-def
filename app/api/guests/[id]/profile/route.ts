@@ -3,6 +3,7 @@ import { getServerAuthContext } from "@/lib/auth/server";
 import { normalizePersonName } from "@/lib/guests/name-normalization";
 import { normalizeNationality } from "@/lib/guests/nationalities";
 import { POVERTA_OPTIONS } from "@/lib/guests/profile-edit-values";
+import { getCurrentStatus } from "@/lib/guests/status";
 import {
   DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
@@ -22,6 +23,7 @@ const ALLOWED_FIELDS = new Set([
   "nome_della_persona",
   "cognome",
   "data_di_nascita",
+  "data_decesso",
   "luogo_di_nascita",
   "sesso_della_persona",
   "nazionalita",
@@ -79,6 +81,21 @@ const POVERTA_OPTION_SET: ReadonlySet<string> = new Set(POVERTA_OPTIONS);
 function isValidItalianDate(value: string): boolean {
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return false;
   const [dayRaw, monthRaw, yearRaw] = value.split("/");
+  const day = Number(dayRaw);
+  const month = Number(monthRaw);
+  const year = Number(yearRaw);
+  if (year < 1900 || year > 2100) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+function isValidIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [yearRaw, monthRaw, dayRaw] = value.split("-");
   const day = Number(dayRaw);
   const month = Number(monthRaw);
   const year = Number(yearRaw);
@@ -161,6 +178,40 @@ export async function PATCH(
       { error: "Data di nascita non valida. Usa il formato gg/mm/aaaa." },
       { status: 400 }
     );
+  }
+
+  if ("data_decesso" in patch) {
+    const { data: guest, error: guestError } = await supabase
+      .from("case_alloggio_submissions")
+      .select("current_status,data_uscita,data_decesso,tipo_aggiornamento")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (guestError) {
+      return NextResponse.json({ error: guestError.message }, { status: 400 });
+    }
+
+    if (!guest) {
+      return NextResponse.json({ error: "Guest not found" }, { status: 404 });
+    }
+
+    if (getCurrentStatus(guest) !== "DECEDUTO") {
+      return NextResponse.json(
+        { error: "La data decesso è modificabile solo per ospiti deceduti." },
+        { status: 400 }
+      );
+    }
+
+    if (patch.data_decesso && !isValidIsoDate(patch.data_decesso)) {
+      return NextResponse.json(
+        { error: "Data decesso non valida. Usa il formato aaaa-mm-gg." },
+        { status: 400 }
+      );
+    }
+
+    if (patch.data_decesso === "") {
+      patch.data_decesso = null;
+    }
   }
 
   if (patch.data_ingresso && !isValidItalianDate(patch.data_ingresso)) {

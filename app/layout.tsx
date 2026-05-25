@@ -5,6 +5,9 @@ import { APP_LAST_UPDATE_ISO } from "@/lib/app/build-info";
 export const metadata: Metadata = {
   title: "Accoglienze",
   description: "Tally -> Supabase -> User portal",
+  other: {
+    google: "notranslate",
+  },
 };
 
 function formatDate(value: string | null | undefined) {
@@ -26,7 +29,7 @@ export default function RootLayout({
   const lastUpdateDate = formatDate(APP_LAST_UPDATE_ISO);
 
   return (
-    <html lang="en">
+    <html lang="it" translate="no">
       <body>
         <div className="app-frame">
           <div className="app-content">{children}</div>

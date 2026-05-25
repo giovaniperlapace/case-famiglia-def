@@ -268,10 +268,13 @@ const USCITA_FIELDS: FieldDef[] = [
   },
   { key: "ha_gia_fatto_domanda_di_casa_popolare", label: "Ha già fatto domanda casa popolare" },
   { key: "data_domanda_casa_popolare", label: "In data" },
-  { key: "data_decesso", label: "Data decesso" },
-  { key: "causa_decesso", label: "Causa decesso" },
   { key: "data_ultimo_contatto", label: "Data ultimo contatto" },
   { key: "dove_dorme", label: "Dove dorme" },
+];
+
+const DECESSO_FIELDS: FieldDef[] = [
+  { key: "data_decesso", label: "Data decesso" },
+  { key: "causa_decesso", label: "Causa decesso" },
 ];
 
 const STATUS_HIGHLIGHT_STYLE: Record<string, { color: string; background: string }> = {
@@ -519,6 +522,10 @@ export default async function SubmissionDetailPage({
             </div>
           </div>
         </>
+      ) : null}
+
+      {currentStatus === "DECEDUTO" ? (
+        <Section title="Dati decesso" data={row} fields={DECESSO_FIELDS} />
       ) : null}
 
       <div className="card" style={{ marginTop: "1rem" }}>

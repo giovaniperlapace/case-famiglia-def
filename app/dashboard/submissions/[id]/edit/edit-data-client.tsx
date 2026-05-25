@@ -52,9 +52,11 @@ const PATOLOGIE_CHECKBOXES = [
   { label: "Altro", key: "patologie_altro" as const },
 ] as const;
 type EditableGuestValues = {
+  current_status: "IN_ACCOGLIENZA" | "USCITO" | "DECEDUTO";
   nome_della_persona: string | null;
   cognome: string | null;
   data_di_nascita: string | null;
+  data_decesso: string | null;
   luogo_di_nascita: string | null;
   sesso_della_persona: string | null;
   nazionalita: string | null;
@@ -110,7 +112,7 @@ type EditDataClientProps = {
   initialValues: EditableGuestValues;
 };
 
-type EditableGuestFieldKey = keyof EditableGuestValues;
+type EditableGuestFieldKey = Exclude<keyof EditableGuestValues, "current_status">;
 type EditableForm = Record<EditableGuestFieldKey, string>;
 
 function normalizeToIsoDate(value: string): string {
@@ -165,6 +167,7 @@ function initForm(initialValues: EditableGuestValues): EditableForm {
     nome_della_persona: initialValues.nome_della_persona ?? "",
     cognome: initialValues.cognome ?? "",
     data_di_nascita: normalizeToIsoDate(initialValues.data_di_nascita ?? ""),
+    data_decesso: normalizeToIsoDate(initialValues.data_decesso ?? ""),
     luogo_di_nascita: initialValues.luogo_di_nascita ?? "",
     sesso_della_persona: initialValues.sesso_della_persona ?? "",
     nazionalita: normalizeNationality(initialValues.nazionalita) ?? initialValues.nazionalita ?? "",
@@ -371,6 +374,7 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
   );
   const needsChiEInContatto = form.siamo_ancora_in_contatto === "Sì";
   const needsDataDomandaCasaPopolare = form.ha_gia_fatto_domanda_di_casa_popolare === "Sì";
+  const canEditDeathDate = initialValues.current_status === "DECEDUTO";
 
   useEffect(() => {
     if (!hasNameOrSurnameChange) {
@@ -389,6 +393,10 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
 
     if (form.data_ingresso && !isValidIsoDate(form.data_ingresso)) {
       return "Data ingresso non valida.";
+    }
+
+    if (canEditDeathDate && form.data_decesso && !isValidIsoDate(form.data_decesso)) {
+      return "Data decesso non valida.";
     }
 
     const normalizedPhone = toE164(form.contatto_della_persona);
@@ -603,6 +611,10 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
         contatto_della_persona: toE164(form.contatto_della_persona),
         nazionalita: normalizeNationality(form.nazionalita) ?? form.nazionalita.trim(),
       };
+
+      if (canEditDeathDate) {
+        payload.data_decesso = form.data_decesso;
+      }
 
       if (shouldPreservePovertyCauses) {
         delete payload.principale_causa_poverta;
@@ -891,6 +903,23 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
           </label>
         </div>
       </div>
+
+      {canEditDeathDate ? (
+        <div className="card" style={{ background: "rgba(15, 118, 110, 0.04)" }}>
+          <h2 style={{ marginTop: 0 }}>Dati decesso</h2>
+          <div style={sectionGridStyle}>
+            <label style={{ display: "grid", gap: 4 }}>
+              <span>Data decesso</span>
+              <input
+                type="date"
+                value={form.data_decesso}
+                lang="it-IT"
+                onChange={(e) => setField("data_decesso", e.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+      ) : null}
 
       <div className="card" style={{ background: "rgba(15, 118, 110, 0.04)" }}>
         <h2 style={{ marginTop: 0 }}>Contatti successivi e casa popolare</h2>
