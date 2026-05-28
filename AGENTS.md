@@ -49,6 +49,11 @@ The app must be secure by default:
 
 ## Current Architecture
 - Next.js app with Supabase SSR/browser/service clients.
+- Next.js 16 uses `proxy.ts` for route protection; do not reintroduce `middleware.ts`.
+- Local Node should follow `.nvmrc` (`20`). Use `nvm use` before `npm install`, `npm run dev`, or validation.
+- Prefer working from a non-cloud-synced checkout such as `~/Developer/case-famiglia`.
+  - This repo has shown `next dev` / `next start` hangs when the checkout lives under macOS File Provider / iCloud-style synced folders.
+  - Avoid syncing `node_modules` and `.next` through cloud storage; if local Next commands hang while reading files, suspect placeholder/on-demand files or File Provider contention before changing app code.
 - Supabase is now self-hosted on Hetzner/Coolify after the 2026-05-06 migration.
   - Source Supabase Cloud project was `menmuxslzhvlgwjrshrx` (`Accoglienze notturne`); do not mutate/delete it during follow-up checks.
   - Target Supabase URL: `https://supabase-accoglienze.stefano-orlando.it`
@@ -85,7 +90,7 @@ The app must be secure by default:
   - `lib/auth/login-access.ts`
   - `lib/email/gmail.ts`
   - `lib/email/settings.ts`
-  - `middleware.ts`
+  - `proxy.ts`
 - Current behavior:
   - unauthenticated access to `/dashboard/*` and `/admin/*` redirects to `/login?next=...`
   - login page posts to `POST /api/auth/login/magic-link`
@@ -161,7 +166,7 @@ The app must be secure by default:
 ## Recommended Files To Read First
 - `app/login/page.tsx`
 - `app/auth/callback/page.tsx`
-- `middleware.ts`
+- `proxy.ts`
 - `app/dashboard/page.tsx`
 - `app/admin/statistics/page.tsx`
 - `app/api/tally/webhook/route.ts`
