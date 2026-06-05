@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getGuestTimeline, type GuestTimelineEvent } from "@/lib/guests/server";
 import { GUEST_STATUS_LABEL, type GuestStatus } from "@/lib/guests/schema";
+import { hasIncompleteData } from "@/lib/guests/incomplete-data";
 import { getCurrentStatus } from "@/lib/guests/status";
+import { STALE_UPDATE_BADGE_LABEL, needsUpdateBadge } from "@/lib/guests/stale-update";
 import DeleteGuestButton from "./delete-guest-button";
 import ModificaAggiornaHelp from "./modifica-aggiorna-help";
 
@@ -283,6 +285,36 @@ const STATUS_HIGHLIGHT_STYLE: Record<string, { color: string; background: string
   DECEDUTO: { color: "#111827", background: "#e5e7eb" },
 };
 
+const STALE_UPDATE_BADGE_STYLE = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "1px solid #facc15",
+  borderRadius: 999,
+  background: "#fef3c7",
+  color: "#854d0e",
+  fontSize: "0.78rem",
+  fontWeight: 800,
+  lineHeight: 1,
+  padding: "0.28rem 0.5rem",
+  whiteSpace: "nowrap",
+} as const;
+
+const INCOMPLETE_DATA_BADGE_STYLE = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "1px solid #dc2626",
+  borderRadius: 999,
+  background: "#fee2e2",
+  color: "#991b1b",
+  fontSize: "0.78rem",
+  fontWeight: 800,
+  lineHeight: 1,
+  padding: "0.28rem 0.5rem",
+  whiteSpace: "nowrap",
+} as const;
+
 export default async function SubmissionDetailPage({
   params,
 }: {
@@ -310,6 +342,8 @@ export default async function SubmissionDetailPage({
   const row = data as SubmissionDetailRow;
   const guestName = `${row.nome_della_persona ?? ""} ${row.cognome ?? ""}`.trim();
   const currentStatus = getCurrentStatus(row);
+  const needsUpdate = needsUpdateBadge(row);
+  const needsCompletion = hasIncompleteData(row);
   const timeline = await getGuestTimeline(supabase, row.id);
   const showUscitaSection = Boolean(row.data_uscita && row.data_uscita.trim());
   const ingressoIncomeTypes = [
@@ -396,9 +430,22 @@ export default async function SubmissionDetailPage({
         </Link>
       </p>
       <h1>Scheda ospite</h1>
-      <p className="muted">
-        Ospite: {guestName || "n/d"} | Struttura: {row.struttura ?? "n/d"} | Scheda:{" "}
-        {row.submission_id ?? row.id}
+      <p
+        className="muted"
+        style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}
+      >
+        <span>Ospite: {guestName || "n/d"}</span>
+        {needsUpdate ? (
+          <span style={STALE_UPDATE_BADGE_STYLE} title="Nessun aggiornamento da più di sei mesi">
+            {STALE_UPDATE_BADGE_LABEL}
+          </span>
+        ) : null}
+        {needsCompletion ? (
+          <span style={INCOMPLETE_DATA_BADGE_STYLE} title="Record con dati obbligatori mancanti">
+            Da completare
+          </span>
+        ) : null}
+        <span>| Struttura: {row.struttura ?? "n/d"} | Scheda: {row.submission_id ?? row.id}</span>
       </p>
       <div
         style={{

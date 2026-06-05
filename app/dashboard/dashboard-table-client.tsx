@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import { hasIncompleteData, matchesIncompleteDataFilter } from "@/lib/guests/incomplete-data";
 import { getCurrentStatus } from "@/lib/guests/status";
+import { STALE_UPDATE_BADGE_LABEL, needsUpdateBadge } from "@/lib/guests/stale-update";
 
 export type SubmissionRow = {
   id: string;
@@ -17,8 +19,10 @@ export type SubmissionRow = {
   cognome: string | null;
   tipo_aggiornamento: string | null;
   data_di_nascita: string | null;
+  data_ingresso: string | null;
   data_uscita: string | null;
   data_decesso: string | null;
+  data_ultimo_contatto: string | null;
   dove_dorme: string | null;
 };
 
@@ -40,6 +44,7 @@ type Filters = {
 };
 
 type IncompleteFilter = "data_nascita" | "data_uscita" | "data_morte";
+type AttentionFilter = "" | "completion" | "update";
 
 type RowView = {
   row: SubmissionRow;
@@ -51,6 +56,8 @@ type RowView = {
   updatedAtLabel: string;
   submittedAtTs: number;
   updatedAtTs: number;
+  needsUpdate: boolean;
+  needsCompletion: boolean;
 };
 
 function formatDateTime(value: string | null) {
@@ -74,10 +81,6 @@ function toTimestamp(value: string | null) {
   if (!value) return 0;
   const ts = Date.parse(value);
   return Number.isNaN(ts) ? 0 : ts;
-}
-
-function hasValue(value: string | null | undefined) {
-  return Boolean(value?.trim());
 }
 
 function getIncompleteFilter(value: string | null): IncompleteFilter | "" {
@@ -141,6 +144,13 @@ const TABLE_TOOL_BUTTON_STYLE: CSSProperties = {
   fontSize: "0.9rem",
 };
 
+const ACTIVE_TABLE_TOOL_BUTTON_STYLE: CSSProperties = {
+  ...TABLE_TOOL_BUTTON_STYLE,
+  borderColor: "var(--accent)",
+  background: "rgba(15, 118, 110, 0.1)",
+  color: "var(--accent)",
+};
+
 const EDIT_LINK_STYLE: CSSProperties = {
   width: 28,
   height: 28,
@@ -154,6 +164,36 @@ const EDIT_LINK_STYLE: CSSProperties = {
   flexShrink: 0,
 };
 
+const STALE_UPDATE_BADGE_STYLE: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "1px solid #facc15",
+  borderRadius: 999,
+  background: "#fef3c7",
+  color: "#854d0e",
+  fontSize: "0.72rem",
+  fontWeight: 800,
+  lineHeight: 1,
+  padding: "0.22rem 0.45rem",
+  whiteSpace: "nowrap",
+};
+
+const INCOMPLETE_DATA_BADGE_STYLE: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "1px solid #dc2626",
+  borderRadius: 999,
+  background: "#fee2e2",
+  color: "#991b1b",
+  fontSize: "0.72rem",
+  fontWeight: 800,
+  lineHeight: 1,
+  padding: "0.22rem 0.45rem",
+  whiteSpace: "nowrap",
+};
+
 export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -163,6 +203,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
   const [sortKey, setSortKey] = useState<SortKey>("submitted_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [showDoveDorme, setShowDoveDorme] = useState(false);
+  const [attentionFilter, setAttentionFilter] = useState<AttentionFilter>("");
   const [filters, setFilters] = useState<Filters>({
     guest: "",
     strutture: strutturaParam ? [strutturaParam] : [],
@@ -198,6 +239,8 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
           updatedAtLabel,
           submittedAtTs: toTimestamp(row.submitted_at),
           updatedAtTs: toTimestamp(row.updated_at),
+          needsUpdate: needsUpdateBadge(row),
+          needsCompletion: hasIncompleteData(row),
         };
       }),
     [rows]
@@ -220,19 +263,13 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
       if (filters.stato && item.stato !== filters.stato) {
         return false;
       }
-      if (incompleteFilter === "data_nascita" && hasValue(item.row.data_di_nascita)) {
+      if (attentionFilter === "completion" && !item.needsCompletion) {
         return false;
       }
-      if (
-        incompleteFilter === "data_uscita" &&
-        (item.stato !== "Uscito" || hasValue(item.row.data_uscita))
-      ) {
+      if (attentionFilter === "update" && !item.needsUpdate) {
         return false;
       }
-      if (
-        incompleteFilter === "data_morte" &&
-        (item.stato !== "Deceduto" || hasValue(item.row.data_decesso))
-      ) {
+      if (incompleteFilter && !matchesIncompleteDataFilter(item.row, incompleteFilter)) {
         return false;
       }
       if (
@@ -279,7 +316,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
     });
 
     return sorted;
-  }, [tableRows, filters, incompleteFilter, sortKey, sortDirection]);
+  }, [tableRows, filters, attentionFilter, incompleteFilter, sortKey, sortDirection]);
 
   function setSort(nextKey: SortKey) {
     if (sortKey === nextKey) {
@@ -313,6 +350,30 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button
             type="button"
+            style={
+              attentionFilter === "completion"
+                ? ACTIVE_TABLE_TOOL_BUTTON_STYLE
+                : TABLE_TOOL_BUTTON_STYLE
+            }
+            onClick={() =>
+              setAttentionFilter((prev) => (prev === "completion" ? "" : "completion"))
+            }
+            aria-pressed={attentionFilter === "completion"}
+          >
+            Solo Da completare
+          </button>
+          <button
+            type="button"
+            style={
+              attentionFilter === "update" ? ACTIVE_TABLE_TOOL_BUTTON_STYLE : TABLE_TOOL_BUTTON_STYLE
+            }
+            onClick={() => setAttentionFilter((prev) => (prev === "update" ? "" : "update"))}
+            aria-pressed={attentionFilter === "update"}
+          >
+            Solo Da aggiornare
+          </button>
+          <button
+            type="button"
             style={TABLE_TOOL_BUTTON_STYLE}
             onClick={() => setShowDoveDorme((prev) => !prev)}
             aria-pressed={showDoveDorme}
@@ -330,6 +391,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                 submitted_at: "",
                 updated_at: "",
               });
+              setAttentionFilter("");
               router.replace(pathname);
             }}
           >
@@ -505,6 +567,22 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                       </svg>
                     </Link>
                     <strong>{item.guest}</strong>
+                    {item.needsUpdate ? (
+                      <span
+                        style={STALE_UPDATE_BADGE_STYLE}
+                        title="Nessun aggiornamento da più di sei mesi"
+                      >
+                        {STALE_UPDATE_BADGE_LABEL}
+                      </span>
+                    ) : null}
+                    {item.needsCompletion ? (
+                      <span
+                        style={INCOMPLETE_DATA_BADGE_STYLE}
+                        title="Record con dati obbligatori mancanti"
+                      >
+                        Da completare
+                      </span>
+                    ) : null}
                   </div>
                 </td>
                 <td style={CELL_STYLE}>{item.struttura}</td>

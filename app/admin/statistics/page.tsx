@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getIncompleteDataFlags } from "@/lib/guests/incomplete-data";
 import { getCurrentStatus } from "@/lib/guests/status";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +21,6 @@ type IncompleteCounts = {
   exitedWithoutExitDate: number;
   deceasedWithoutDeathDate: number;
 };
-
-function hasValue(value: string | null | undefined) {
-  return Boolean(value?.trim());
-}
 
 function parseDateValue(value: string | null | undefined) {
   const trimmed = value?.trim();
@@ -158,15 +155,17 @@ export default async function AdminStatisticsPage() {
       }
     }
 
-    if (!hasValue(row.data_di_nascita)) {
+    const incompleteFlags = getIncompleteDataFlags(row);
+
+    if (incompleteFlags.missingBirthDate) {
       incomplete.missingBirthDate += 1;
     }
 
-    if (status === "USCITO" && !hasValue(row.data_uscita)) {
+    if (incompleteFlags.exitedWithoutExitDate) {
       incomplete.exitedWithoutExitDate += 1;
     }
 
-    if (status === "DECEDUTO" && !hasValue(row.data_decesso)) {
+    if (incompleteFlags.deceasedWithoutDeathDate) {
       incomplete.deceasedWithoutDeathDate += 1;
     }
 
