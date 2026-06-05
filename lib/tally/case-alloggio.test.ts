@@ -70,3 +70,35 @@ test("guest name and surname are normalized when mapped from Tally", () => {
   assert.equal(mapped.row.nome_della_persona, "Maria Luisa");
   assert.equal(mapped.row.cognome, "D'Angelo-Rossi");
 });
+
+test("legacy Casa housing answers are mapped to autonomously found housing", () => {
+  const payload = {
+    data: {
+      submissionId: "sub_6",
+      fields: [
+        { label: "Dove dormiva", value: "Casa" },
+        { label: "Dove dorme", value: "Casa" },
+      ],
+    },
+  };
+
+  const mapped = mapCaseAlloggioSubmission(payload);
+  assert.equal(mapped.row.dove_dormiva, "Casa trovata autonomamente");
+  assert.equal(mapped.row.dove_dorme, "Casa trovata autonomamente");
+});
+
+test("legacy Convivenza housing answers are mapped to Sant'Egidio housing", () => {
+  const payload = {
+    data: {
+      submissionId: "sub_7",
+      fields: [
+        { label: "Dove dormiva", value: "Convivenza" },
+        { label: "Dove dorme", value: "Convivenza" },
+      ],
+    },
+  };
+
+  const mapped = mapCaseAlloggioSubmission(payload);
+  assert.equal(mapped.row.dove_dormiva, "Convivenza di Sant'Egidio");
+  assert.equal(mapped.row.dove_dorme, "Convivenza di Sant'Egidio");
+});

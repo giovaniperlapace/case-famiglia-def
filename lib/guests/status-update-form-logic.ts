@@ -2,7 +2,6 @@ import {
   CAUSA_DECESSO_OPTIONS,
   CAUSA_USCITA_OPTIONS,
   DECESSO_CAUSA_USCITA,
-  DECESSO_DOVE_DORME,
   DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
   DOVE_DORME_OPTIONS,
@@ -15,6 +14,7 @@ import {
   STRUTTURA_TRASFERIMENTO_OPTIONS,
   TIPO_LAVORO_OPTIONS,
   TIPO_REDDITO_OPTIONS,
+  normalizeDoveDormeOption,
   normalizePatologiaPsichiatrica,
 } from "./status-update-options.ts";
 
@@ -277,7 +277,11 @@ export function validateStatusUpdateForm(
 
     if (updateType === "followup") {
       validateRequiredIsoDate(form.data_ultimo_contatto, "Data ultimo contatto");
-      validateAllowed(form.dove_dorme, DOVE_DORME_OPTIONS, "Dove dorme non valido.");
+      validateAllowed(
+        normalizeDoveDormeOption(form.dove_dorme) ?? "",
+        DOVE_DORME_OPTIONS,
+        "Dove dorme non valido."
+      );
       validateAllowed(form.ha_residenza, RESIDENZA_OPTIONS, "Ha residenza non valido.");
       validateAllowed(form.ha_un_reddito, REDDITO_OPTIONS, "Ha reddito non valido.");
 
@@ -294,14 +298,6 @@ export function validateStatusUpdateForm(
         }
       }
 
-      if (form.dove_dorme === DECESSO_DOVE_DORME) {
-        validateRequiredIsoDate(form.data_decesso_followup, "Data decesso");
-        validateAllowed(
-          form.causa_decesso_followup,
-          CAUSA_DECESSO_OPTIONS,
-          "Causa decesso non valida."
-        );
-      }
     }
 
     if (updateType === "exit") {
@@ -447,7 +443,7 @@ export function buildStatusUpdatePayload(
 
   if (updateType === "followup") {
     payload.data_ultimo_contatto = form.data_ultimo_contatto;
-    payload.dove_dorme = form.dove_dorme;
+    payload.dove_dorme = normalizeDoveDormeOption(form.dove_dorme) ?? "";
     payload.ha_residenza = form.ha_residenza;
     payload.ha_un_reddito = form.ha_un_reddito;
 
@@ -457,12 +453,6 @@ export function buildStatusUpdatePayload(
       if (selectedIncome.includes("Reddito da lavoro")) {
         payload.tipo_di_lavoro_followup = form.tipo_di_lavoro_followup;
       }
-    }
-
-    if (form.dove_dorme === DECESSO_DOVE_DORME) {
-      payload.data_decesso_followup = form.data_decesso_followup;
-      payload.causa_decesso_followup = form.causa_decesso_followup;
-      payload.causa_decesso = form.causa_decesso_followup;
     }
 
     return payload;

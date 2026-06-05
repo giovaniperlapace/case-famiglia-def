@@ -1,7 +1,7 @@
 import { extractTallyAnswers, normalizeText, type TallyPayload } from "@/lib/tally/webhook";
 import { normalizePersonName } from "@/lib/guests/name-normalization";
 import { normalizeNationality } from "@/lib/guests/nationalities";
-import { DOCUMENTI_OPTIONS } from "@/lib/guests/status-update-options";
+import { DOCUMENTI_OPTIONS, normalizeDoveDormeOption } from "@/lib/guests/status-update-options";
 
 export const CASE_ALLOGGIO_HEADER_TO_COLUMN = {
   id_utente: "id_utente",
@@ -238,6 +238,8 @@ export function mapCaseAlloggioSubmission(payload: TallyPayload) {
   row.nome_della_persona = normalizePersonName(row.nome_della_persona);
   row.cognome = normalizePersonName(row.cognome);
   row.nazionalita = normalizeNationality(row.nazionalita) ?? row.nazionalita;
+  row.dove_dorme = normalizeDoveDormeOption(row.dove_dorme);
+  row.dove_dormiva = normalizeDoveDormeOption(row.dove_dormiva);
 
   const documentiIngressoFromFlags = DOCUMENTI_OPTIONS.filter((option) => {
     const normalizedHeader = normalizeHeader(

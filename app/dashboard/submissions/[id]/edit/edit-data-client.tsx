@@ -17,6 +17,7 @@ import {
   REDDITO_OPTIONS,
   RESIDENZA_OPTIONS,
   TIPO_LAVORO_OPTIONS,
+  normalizeDoveDormeOption,
   normalizePatologiaPsichiatrica,
 } from "@/lib/guests/status-update-options";
 
@@ -191,7 +192,7 @@ function initForm(initialValues: EditableGuestValues): EditableForm {
     tipo_di_lavoro: initialValues.tipo_di_lavoro ?? "",
     al_momento_dell_ingresso_ha_residenza:
       initialValues.al_momento_dell_ingresso_ha_residenza ?? "",
-    dove_dormiva: initialValues.dove_dormiva ?? "",
+    dove_dormiva: normalizeDoveDormeOption(initialValues.dove_dormiva) ?? "",
     principale_causa_poverta: initialValues.principale_causa_poverta ?? "",
     al_momento_dell_ingresso_ha_i_seguenti_documenti:
       initialValues.al_momento_dell_ingresso_ha_i_seguenti_documenti ?? "",
@@ -442,7 +443,10 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
       return "Residenza all'ingresso non valida.";
     }
 
-    if (form.dove_dormiva && !isAllowed(DOVE_DORME_OPTIONS, form.dove_dormiva)) {
+    if (
+      form.dove_dormiva &&
+      !isAllowed(DOVE_DORME_OPTIONS, normalizeDoveDormeOption(form.dove_dormiva) ?? "")
+    ) {
       return "Dove dormiva non valido.";
     }
 
@@ -608,6 +612,7 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
         patologie_altro: selectedPatologie.includes("Altro") ? "true" : "false",
         data_di_nascita: form.data_di_nascita ? isoToItalianDate(form.data_di_nascita) : "",
         data_ingresso: form.data_ingresso ? isoToItalianDate(form.data_ingresso) : "",
+        dove_dormiva: normalizeDoveDormeOption(form.dove_dormiva) ?? "",
         contatto_della_persona: toE164(form.contatto_della_persona),
         nazionalita: normalizeNationality(form.nazionalita) ?? form.nazionalita.trim(),
       };

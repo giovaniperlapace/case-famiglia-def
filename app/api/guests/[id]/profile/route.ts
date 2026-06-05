@@ -14,6 +14,7 @@ import {
   RESIDENZA_OPTIONS,
   TIPO_LAVORO_OPTIONS,
   TIPO_REDDITO_OPTIONS,
+  normalizeDoveDormeOption,
   normalizePatologiaPsichiatrica,
 } from "@/lib/guests/status-update-options";
 
@@ -302,8 +303,12 @@ export async function PATCH(
     return NextResponse.json({ error: "Residenza all'ingresso non valida." }, { status: 400 });
   }
 
-  if (patch.dove_dormiva && !isAllowed(DOVE_DORME_OPTIONS, patch.dove_dormiva)) {
-    return NextResponse.json({ error: "Dove dormiva non valido." }, { status: 400 });
+  if (patch.dove_dormiva) {
+    const normalizedDoveDormiva = normalizeDoveDormeOption(patch.dove_dormiva);
+    if (!normalizedDoveDormiva || !isAllowed(DOVE_DORME_OPTIONS, normalizedDoveDormiva)) {
+      return NextResponse.json({ error: "Dove dormiva non valido." }, { status: 400 });
+    }
+    patch.dove_dormiva = normalizedDoveDormiva;
   }
 
   if (patch.principale_causa_poverta) {

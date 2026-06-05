@@ -74,6 +74,39 @@ test("followup validates multi-reddito parity with work-type dependency", () => 
   assert.equal(validateStatusUpdateForm("followup", valid), null);
 });
 
+test("legacy Casa housing value is normalized to autonomously found housing", () => {
+  const legacyCasa = {
+    ...baseForm(),
+    dove_dorme: "Casa",
+  };
+
+  assert.equal(validateStatusUpdateForm("followup", legacyCasa), null);
+  assert.equal(
+    buildStatusUpdatePayload("followup", legacyCasa, "San Calisto").dove_dorme,
+    "Casa trovata autonomamente"
+  );
+});
+
+test("legacy Convivenza housing value is normalized to Sant'Egidio housing", () => {
+  const legacyConvivenza = {
+    ...baseForm(),
+    dove_dorme: "Convivenza",
+  };
+
+  assert.equal(validateStatusUpdateForm("followup", legacyConvivenza), null);
+  assert.equal(
+    buildStatusUpdatePayload("followup", legacyConvivenza, "San Calisto").dove_dorme,
+    "Convivenza di Sant'Egidio"
+  );
+});
+
+test("Deceduto is not a valid follow-up housing option", () => {
+  assert.equal(
+    validateStatusUpdateForm("followup", { ...baseForm(), dove_dorme: "Deceduto" }),
+    "Dove dorme non valido."
+  );
+});
+
 test("exclusive 'Nessuna' logic matches edit behavior for dipendenze/patologie", () => {
   const invalidDependencies = {
     ...baseForm(),
@@ -89,11 +122,8 @@ test("exclusive 'Nessuna' logic matches edit behavior for dipendenze/patologie",
 });
 
 test("payload builder preserves historical update semantics by update type", () => {
-  const followupDeathForm = {
+  const followupForm = {
     ...baseForm(),
-    dove_dorme: "Deceduto",
-    data_decesso_followup: "2026-03-02",
-    causa_decesso_followup: "Neoplasia",
     ha_un_reddito: "Sì",
     tipo_di_reddito_followup: "Pensione, Reddito da lavoro",
     tipo_di_lavoro_followup: "Lavoro subordinato",
@@ -101,10 +131,7 @@ test("payload builder preserves historical update semantics by update type", () 
     patologie: "Neoplasie",
   };
 
-  const followupPayload = buildStatusUpdatePayload("followup", followupDeathForm, "San Calisto");
-  assert.equal(followupPayload.data_decesso_followup, "2026-03-02");
-  assert.equal(followupPayload.causa_decesso_followup, "Neoplasia");
-  assert.equal(followupPayload.causa_decesso, "Neoplasia");
+  const followupPayload = buildStatusUpdatePayload("followup", followupForm, "San Calisto");
   assert.equal(followupPayload.tipo_di_reddito_followup, "Pensione, Reddito da lavoro");
   assert.equal(followupPayload.tipo_di_lavoro_followup, "Lavoro subordinato");
   assert.equal(followupPayload.dipendenze, "Alcolismo, Sostanze");

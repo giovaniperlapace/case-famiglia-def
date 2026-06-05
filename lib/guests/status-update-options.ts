@@ -20,11 +20,12 @@ export const DOVE_DORME_OPTIONS = [
   "Strada",
   "Altro centro accoglienza",
   "Sistemazione abitativa precaria",
-  "Convivenza",
-  "Casa",
+  "Convivenza di Sant'Egidio",
+  "Convivenza autonoma",
+  "Casa trovata da noi",
+  "Casa trovata autonomamente",
   "Ricovero in struttura sanitaria",
   "Detenzione",
-  "Deceduto",
 ] as const;
 
 export const CAUSA_USCITA_OPTIONS = [
@@ -123,8 +124,20 @@ export const PATOLOGIA_PSICHIATRICA_OPTIONS = [
   "Disabilità",
 ] as const;
 
-export const DECESSO_DOVE_DORME = "Deceduto";
 export const DECESSO_CAUSA_USCITA = "Decesso";
+export const LEGACY_DOVE_DORME_CASA = "Casa";
+export const DEFAULT_LEGACY_CASA_DOVE_DORME = "Casa trovata autonomamente";
+export const LEGACY_DOVE_DORME_CONVIVENZA = "Convivenza";
+export const DEFAULT_LEGACY_CONVIVENZA_DOVE_DORME = "Convivenza di Sant'Egidio";
+
+export function normalizeDoveDormeOption(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed === LEGACY_DOVE_DORME_CASA) return DEFAULT_LEGACY_CASA_DOVE_DORME;
+  if (trimmed === LEGACY_DOVE_DORME_CONVIVENZA) return DEFAULT_LEGACY_CONVIVENZA_DOVE_DORME;
+  return trimmed;
+}
 
 export function isAllowedOption<T extends readonly string[]>(
   options: T,

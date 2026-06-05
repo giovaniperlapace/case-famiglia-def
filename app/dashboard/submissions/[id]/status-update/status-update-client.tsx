@@ -7,7 +7,6 @@ import {
   CAUSA_DECESSO_OPTIONS,
   CAUSA_USCITA_OPTIONS,
   DECESSO_CAUSA_USCITA,
-  DECESSO_DOVE_DORME,
   DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
   DOVE_DORME_OPTIONS,
@@ -20,6 +19,7 @@ import {
   STRUTTURA_TRASFERIMENTO_OPTIONS,
   TIPO_LAVORO_OPTIONS,
   TIPO_REDDITO_OPTIONS,
+  normalizeDoveDormeOption,
   normalizePatologiaPsichiatrica,
   type UpdateTypeOption,
 } from "@/lib/guests/status-update-options";
@@ -135,6 +135,34 @@ const sectionGridStyle = {
   alignItems: "start",
 } as const;
 
+const updateTypeFieldStyle = {
+  display: "grid",
+  gap: 10,
+  padding: "0.95rem 1rem",
+  border: "1px solid rgba(15, 118, 110, 0.35)",
+  borderRadius: 10,
+  background: "rgba(15, 118, 110, 0.06)",
+} as const;
+
+const updateTypeLabelStyle = {
+  color: "var(--fg)",
+  fontSize: "1.45rem",
+  fontWeight: 700,
+  lineHeight: 1.15,
+} as const;
+
+const updateTypeSelectStyle = {
+  width: "100%",
+  minHeight: "2.75rem",
+  border: "1px solid rgba(15, 118, 110, 0.45)",
+  borderRadius: 8,
+  backgroundColor: "#ffffff",
+  color: "var(--fg)",
+  fontSize: "1.05rem",
+  fontWeight: 600,
+  padding: "0.55rem 0.75rem",
+} as const;
+
 function normalizeExclusiveSelections(options: readonly string[], selected: string[]): string[] {
   const unique = options.filter((option) => selected.includes(option));
   if (unique.includes("Nessuna")) {
@@ -187,7 +215,7 @@ function initForm(initialValues: StatusUpdateInitialValues): StatusUpdateFormVal
 
   return {
     data_ultimo_contatto: normalizeToIsoDate(initialValues.data_ultimo_contatto),
-    dove_dorme: initialValues.dove_dorme ?? "",
+    dove_dorme: normalizeDoveDormeOption(initialValues.dove_dorme) ?? "",
     data_decesso_followup: "",
     causa_decesso_followup: "",
     ha_residenza: initialValues.ha_residenza ?? "",
@@ -277,7 +305,6 @@ export default function StatusUpdateClient({
   const selectedDependencies = splitCsvValues(form.dipendenze);
   const selectedPathologies = splitCsvValues(form.patologie);
 
-  const isFollowUpDeath = updateType === "followup" && form.dove_dorme === DECESSO_DOVE_DORME;
   const isExitDeath = updateType === "exit" && form.causa_uscita === DECESSO_CAUSA_USCITA;
   const hasFollowUpIncome = form.ha_un_reddito === "Sì";
   const hasExitIncome = form.al_momento_dell_uscita_ha_un_reddito === "Sì";
@@ -352,9 +379,10 @@ export default function StatusUpdateClient({
         Stato attuale: {GUEST_STATUS_LABEL[currentStatus]}
       </p>
 
-      <label style={{ display: "grid", gap: 4 }}>
-        <span>Tipo aggiornamento</span>
+      <label style={updateTypeFieldStyle}>
+        <span style={updateTypeLabelStyle}>Tipo aggiornamento</span>
         <select
+          style={updateTypeSelectStyle}
           value={updateType}
           onChange={(event) => setUpdateType(event.target.value as UpdateTypeOption)}
           disabled={isTerminal || availableUpdateTypes.length === 0}
@@ -389,17 +417,7 @@ export default function StatusUpdateClient({
               <span>Dove dorme</span>
               <select
                 value={form.dove_dorme}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setForm((prev) => ({
-                    ...prev,
-                    dove_dorme: value,
-                    data_decesso_followup:
-                      value === DECESSO_DOVE_DORME ? prev.data_decesso_followup : "",
-                    causa_decesso_followup:
-                      value === DECESSO_DOVE_DORME ? prev.causa_decesso_followup : "",
-                  }));
-                }}
+                onChange={(event) => setField("dove_dorme", event.target.value)}
               >
                 <option value="">Seleziona...</option>
                 {DOVE_DORME_OPTIONS.map((option) => (
@@ -409,34 +427,6 @@ export default function StatusUpdateClient({
                 ))}
               </select>
             </label>
-
-            {isFollowUpDeath ? (
-              <>
-                <label style={{ display: "grid", gap: 4 }}>
-                  <span>Data decesso</span>
-                  <input
-                    type="date"
-                    value={form.data_decesso_followup}
-                    onChange={(event) => setField("data_decesso_followup", event.target.value)}
-                  />
-                </label>
-
-                <label style={{ display: "grid", gap: 4 }}>
-                  <span>Causa decesso</span>
-                  <select
-                    value={form.causa_decesso_followup}
-                    onChange={(event) => setField("causa_decesso_followup", event.target.value)}
-                  >
-                    <option value="">Seleziona...</option>
-                    {CAUSA_DECESSO_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </>
-            ) : null}
 
             <label style={{ display: "grid", gap: 4 }}>
               <span>Ha residenza</span>

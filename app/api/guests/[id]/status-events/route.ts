@@ -12,7 +12,6 @@ import {
   CAUSA_DECESSO_OPTIONS,
   CAUSA_USCITA_OPTIONS,
   DECESSO_CAUSA_USCITA,
-  DECESSO_DOVE_DORME,
   DOCUMENTI_OPTIONS,
   DIPENDENZE_OPTIONS,
   DOVE_DORME_OPTIONS,
@@ -25,6 +24,7 @@ import {
   TIPO_LAVORO_OPTIONS,
   isAffirmative,
   isAllowedOption,
+  normalizeDoveDormeOption,
   normalizePatologiaPsichiatrica,
 } from "@/lib/guests/status-update-options";
 
@@ -222,7 +222,7 @@ export async function POST(
       );
       payload.dove_dorme = requireAllowed(
         DOVE_DORME_OPTIONS,
-        rawPayload.dove_dorme,
+        normalizeDoveDormeOption(toNullableTrimmed(rawPayload.dove_dorme)),
         "Dove dorme non valido"
       );
 
@@ -249,23 +249,6 @@ export async function POST(
         }
       }
 
-      if ((payload.dove_dorme as string) === DECESSO_DOVE_DORME) {
-        const deathDate = requireIsoDate(
-          rawPayload.data_decesso_followup ?? rawPayload.data_decesso_2,
-          "Data decesso obbligatoria"
-        );
-        const deathCause = requireAllowed(
-          CAUSA_DECESSO_OPTIONS,
-          rawPayload.causa_decesso_followup ?? rawPayload.causa_decesso_2,
-          "Causa decesso non valida"
-        );
-        payload.data_decesso_followup = deathDate;
-        payload.causa_decesso_followup = deathCause;
-        payload.causa_decesso = deathCause;
-        eventType = "STATUS_CHANGE";
-        toStatus = "DECEDUTO";
-        effectiveDate = toIsoDateStart(deathDate);
-      }
     } else if (updateType === "exit") {
       const exitDate = requireIsoDate(rawPayload.data_uscita ?? body.effectiveDate, "Data uscita obbligatoria");
       payload.data_uscita = exitDate;

@@ -19,6 +19,7 @@ export type SubmissionRow = {
   data_di_nascita: string | null;
   data_uscita: string | null;
   data_decesso: string | null;
+  dove_dorme: string | null;
 };
 
 type SortKey =
@@ -45,6 +46,7 @@ type RowView = {
   guest: string;
   struttura: string;
   stato: string;
+  doveDorme: string;
   submittedAtLabel: string;
   updatedAtLabel: string;
   submittedAtTs: number;
@@ -160,6 +162,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
   const incompleteFilter = getIncompleteFilter(searchParams.get("dati_incompleti"));
   const [sortKey, setSortKey] = useState<SortKey>("submitted_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [showDoveDorme, setShowDoveDorme] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     guest: "",
     strutture: strutturaParam ? [strutturaParam] : [],
@@ -190,6 +193,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
           guest,
           struttura: row.struttura ?? "n/d",
           stato: deriveGuestStatus(row),
+          doveDorme: row.dove_dorme?.trim() || "n/d",
           submittedAtLabel,
           updatedAtLabel,
           submittedAtTs: toTimestamp(row.submitted_at),
@@ -306,22 +310,32 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
         <p className="muted" style={{ margin: 0 }}>
           {filteredAndSorted.length} risultati (su {rows.length})
         </p>
-        <button
-          type="button"
-          style={TABLE_TOOL_BUTTON_STYLE}
-          onClick={() => {
-            setFilters({
-              guest: "",
-              strutture: [],
-              stato: "",
-              submitted_at: "",
-              updated_at: "",
-            });
-            router.replace(pathname);
-          }}
-        >
-          Reset filtri
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            style={TABLE_TOOL_BUTTON_STYLE}
+            onClick={() => setShowDoveDorme((prev) => !prev)}
+            aria-pressed={showDoveDorme}
+          >
+            {showDoveDorme ? "Nascondi Dove dorme" : "Mostra Dove dorme"}
+          </button>
+          <button
+            type="button"
+            style={TABLE_TOOL_BUTTON_STYLE}
+            onClick={() => {
+              setFilters({
+                guest: "",
+                strutture: [],
+                stato: "",
+                submitted_at: "",
+                updated_at: "",
+              });
+              router.replace(pathname);
+            }}
+          >
+            Reset filtri
+          </button>
+        </div>
       </div>
 
       {incompleteFilter ? (
@@ -332,7 +346,14 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
       ) : null}
 
       <div style={{ overflowX: "auto", marginTop: "0.5rem" }}>
-        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 940 }}>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "separate",
+            borderSpacing: 0,
+            minWidth: showDoveDorme ? 1100 : 940,
+          }}
+        >
           <thead>
             <tr>
               <th align="left" style={HEADER_CELL_STYLE}>
@@ -350,6 +371,11 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                   Stato {sortArrow("stato")}
                 </button>
               </th>
+              {showDoveDorme ? (
+                <th align="left" style={HEADER_CELL_STYLE}>
+                  Dove dorme
+                </th>
+              ) : null}
               <th align="left" style={HEADER_CELL_STYLE}>
                 <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort("submitted_at")}>
                   Inviato {sortArrow("submitted_at")}
@@ -429,6 +455,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                   <option value="Deceduto">Deceduto</option>
                 </select>
               </th>
+              {showDoveDorme ? <th align="left" style={CELL_STYLE} /> : null}
               <th align="left" style={CELL_STYLE}>
                 <input
                   value={filters.submitted_at}
@@ -482,6 +509,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                 </td>
                 <td style={CELL_STYLE}>{item.struttura}</td>
                 <td style={CELL_STYLE}>{item.stato}</td>
+                {showDoveDorme ? <td style={CELL_STYLE}>{item.doveDorme}</td> : null}
                 <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.submittedAtLabel}</td>
                 <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.updatedAtLabel}</td>
               </tr>
