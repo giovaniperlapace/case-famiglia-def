@@ -27,6 +27,8 @@ const ERROR_MISSING_BIRTH_DATE =
   "Prima di stampare e inserire la privacy è necessario aggiungere la data di nascita.";
 const ERROR_MISSING_REQUIRED_DATA =
   "Prima di stampare e inserire la privacy è necessario completare nome, cognome e data di nascita.";
+const MAX_PRIVACY_IMAGE_SIDE = 1600;
+const PRIVACY_IMAGE_QUALITY = 0.72;
 
 function hasValue(value: string | null | undefined): boolean {
   return Boolean(value?.trim());
@@ -50,6 +52,70 @@ function formatDateTime(value: string): string {
   }).format(parsed);
 }
 
+function canCompressImage(file: File): boolean {
+  return file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/webp";
+}
+
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Immagine non leggibile."));
+    };
+    image.src = url;
+  });
+}
+
+function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Impossibile comprimere l'immagine."));
+          return;
+        }
+        resolve(blob);
+      },
+      "image/jpeg",
+      PRIVACY_IMAGE_QUALITY
+    );
+  });
+}
+
+async function compressPrivacyImage(file: File): Promise<File> {
+  if (!canCompressImage(file)) return file;
+
+  const image = await loadImageFromFile(file);
+  const scale = Math.min(1, MAX_PRIVACY_IMAGE_SIDE / Math.max(image.naturalWidth, image.naturalHeight));
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+
+  if (!context) return file;
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+
+  const blob = await canvasToJpegBlob(canvas);
+  if (blob.size >= file.size) return file;
+
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "privacy";
+  return new File([blob], `${baseName}.jpg`, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
+}
+
 export default function PrivacyButton({
   guestId,
   nome,
@@ -65,6 +131,7 @@ export default function PrivacyButton({
   const [documents, setDocuments] = useState<PrivacyDocument[]>([]);
   const [hasPrivacyDocuments, setHasPrivacyDocuments] = useState(initialHasPrivacyDocuments);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+  const [viewingDocument, setViewingDocument] = useState<PrivacyDocument | null>(null);
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -163,9 +230,16 @@ export default function PrivacyButton({
     setError(null);
     setMessage(null);
 
+    let preparedFile = file;
+    try {
+      preparedFile = await compressPrivacyImage(file);
+    } catch {
+      preparedFile = file;
+    }
+
     const formData = new FormData();
     formData.append("document_type", documentType);
-    formData.append("file", file);
+    formData.append("file", preparedFile);
 
     try {
       const response = await fetch(`/api/guests/${guestId}/privacy/documents`, {
@@ -342,6 +416,10 @@ export default function PrivacyButton({
   function openDocument(document: PrivacyDocument) {
     if (!document.signed_url) {
       setError("Documento non disponibile per la visualizzazione.");
+      return;
+    }
+    if (document.mime_type.startsWith("image/")) {
+      setViewingDocument(document);
       return;
     }
     window.open(document.signed_url, "_blank", "noopener,noreferrer");
@@ -552,6 +630,58 @@ export default function PrivacyButton({
           </div>
         </div>
       ) : null}
+
+      {viewingDocument ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Visualizza documento privacy"
+          style={{ ...overlayStyle, zIndex: 70 }}
+        >
+          <div style={imageViewerDialogStyle}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <h2 style={dialogTitleStyle}>{formatDocumentType(viewingDocument.document_type)}</h2>
+                <p className="muted" style={{ margin: "0 0 0.75rem", fontSize: 13 }}>
+                  {formatDateTime(viewingDocument.created_at)} · {viewingDocument.file_name}
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+                {viewingDocument.signed_url ? (
+                  <a href={viewingDocument.signed_url} target="_blank" rel="noreferrer">
+                    <button type="button" style={secondaryButtonStyle}>
+                      Apri originale
+                    </button>
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setViewingDocument(null)}
+                  style={secondaryButtonStyle}
+                >
+                  Chiudi
+                </button>
+              </div>
+            </div>
+            {viewingDocument.signed_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={viewingDocument.signed_url}
+                alt={formatDocumentType(viewingDocument.document_type)}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  maxHeight: "calc(100vh - 12rem)",
+                  objectFit: "contain",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  background: "#ffffff",
+                }}
+              />
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -570,6 +700,17 @@ const overlayStyle: CSSProperties = {
 const dialogStyle: CSSProperties = {
   width: "min(520px, calc(100vw - 2rem))",
   maxHeight: "calc(100vh - 2rem)",
+  overflow: "auto",
+  border: "1px solid var(--border)",
+  borderRadius: 12,
+  background: "var(--panel)",
+  padding: "1rem",
+  boxShadow: "0 20px 50px rgba(17, 24, 39, 0.25)",
+};
+
+const imageViewerDialogStyle: CSSProperties = {
+  width: "min(980px, calc(100vw - 1rem))",
+  maxHeight: "calc(100vh - 1rem)",
   overflow: "auto",
   border: "1px solid var(--border)",
   borderRadius: 12,
