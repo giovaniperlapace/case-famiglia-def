@@ -67,7 +67,7 @@ using (
       on user_row.auth_user_id = auth.uid()
       or lower(user_row.email) = lower(coalesce(auth.email(), ''))
     join public.app_utenti_strutture user_structure
-      on user_structure.id_utente = user_row.id
+      on user_structure.utente_id = user_row.id
     where guest.id = guest_privacy_documents.guest_id
       and lower(user_structure.struttura) = lower(guest.struttura)
   )
@@ -86,7 +86,7 @@ with check (
       on user_row.auth_user_id = auth.uid()
       or lower(user_row.email) = lower(coalesce(auth.email(), ''))
     join public.app_utenti_strutture user_structure
-      on user_structure.id_utente = user_row.id
+      on user_structure.utente_id = user_row.id
     where guest.id = guest_privacy_documents.guest_id
       and lower(user_structure.struttura) = lower(guest.struttura)
   )
