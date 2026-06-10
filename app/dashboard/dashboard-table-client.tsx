@@ -45,7 +45,7 @@ type Filters = {
 };
 
 type IncompleteFilter = "data_nascita" | "data_uscita" | "data_morte";
-type AttentionFilter = "" | "completion" | "update" | "privacy";
+type AttentionFilter = "" | "completion" | "update" | "privacy" | "privacy_collected";
 
 type RowView = {
   row: SubmissionRow;
@@ -60,6 +60,7 @@ type RowView = {
   needsUpdate: boolean;
   needsCompletion: boolean;
   needsPrivacy: boolean;
+  hasPrivacy: boolean;
 };
 
 function formatDateTime(value: string | null) {
@@ -98,10 +99,28 @@ function getInitialStato(filter: IncompleteFilter | "") {
   return "";
 }
 
+function getAttentionFilter(value: string | null): AttentionFilter {
+  if (value === "completion" || value === "update" || value === "privacy") return value;
+  if (value === "privacy_missing") return "privacy";
+  if (value === "privacy_collected") return "privacy_collected";
+  return "";
+}
+
+function getInitialStatoForAttention(filter: AttentionFilter) {
+  if (filter === "privacy" || filter === "privacy_collected") return "In accoglienza";
+  return "";
+}
+
 const INCOMPLETE_FILTER_LABEL: Record<IncompleteFilter, string> = {
   data_nascita: "Senza data di nascita",
   data_uscita: "Uscito senza data uscita",
   data_morte: "Deceduto senza data morte",
+};
+
+const ATTENTION_FILTER_LABEL: Partial<Record<AttentionFilter, string>> = {
+  update: "Da aggiornare",
+  privacy: "Privacy mancante",
+  privacy_collected: "Privacy raccolta",
 };
 
 const CELL_STYLE: CSSProperties = {
@@ -217,14 +236,15 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
   const searchParams = useSearchParams();
   const strutturaParam = searchParams.get("struttura")?.trim() ?? "";
   const incompleteFilter = getIncompleteFilter(searchParams.get("dati_incompleti"));
+  const initialAttentionFilter = getAttentionFilter(searchParams.get("attenzione"));
   const [sortKey, setSortKey] = useState<SortKey>("submitted_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [showDoveDorme, setShowDoveDorme] = useState(false);
-  const [attentionFilter, setAttentionFilter] = useState<AttentionFilter>("");
+  const [attentionFilter, setAttentionFilter] = useState<AttentionFilter>(initialAttentionFilter);
   const [filters, setFilters] = useState<Filters>({
     guest: "",
     strutture: strutturaParam ? [strutturaParam] : [],
-    stato: getInitialStato(incompleteFilter),
+    stato: getInitialStato(incompleteFilter) || getInitialStatoForAttention(initialAttentionFilter),
     submitted_at: "",
     updated_at: "",
   });
@@ -260,6 +280,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
           needsUpdate: needsUpdateBadge(row),
           needsCompletion: hasIncompleteData(row),
           needsPrivacy: stato === "In accoglienza" && row.privacy_documents_count === 0,
+          hasPrivacy: stato === "In accoglienza" && row.privacy_documents_count > 0,
         };
       }),
     [rows]
@@ -289,6 +310,9 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
         return false;
       }
       if (attentionFilter === "privacy" && !item.needsPrivacy) {
+        return false;
+      }
+      if (attentionFilter === "privacy_collected" && !item.hasPrivacy) {
         return false;
       }
       if (incompleteFilter && !matchesIncompleteDataFilter(item.row, incompleteFilter)) {
@@ -437,6 +461,13 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
       {incompleteFilter ? (
         <p className="muted" style={{ margin: "0 0 0.75rem" }}>
           Filtro da statistiche: {INCOMPLETE_FILTER_LABEL[incompleteFilter]}
+          {filters.strutture.length === 1 ? ` - ${filters.strutture[0]}` : ""}
+        </p>
+      ) : null}
+
+      {attentionFilter && ATTENTION_FILTER_LABEL[attentionFilter] ? (
+        <p className="muted" style={{ margin: "0 0 0.75rem" }}>
+          Filtro da statistiche: {ATTENTION_FILTER_LABEL[attentionFilter]}
           {filters.strutture.length === 1 ? ` - ${filters.strutture[0]}` : ""}
         </p>
       ) : null}

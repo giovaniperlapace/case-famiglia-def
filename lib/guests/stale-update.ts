@@ -45,6 +45,6 @@ export function getLatestGuestUpdateDate(source: GuestUpdateDateSource): string 
 }
 
 export function needsUpdateBadge(source: GuestUpdateDateSource, now = new Date()): boolean {
-  if (getCurrentStatus(source) === "DECEDUTO") return false;
+  if (getCurrentStatus(source) !== "USCITO") return false;
   return isOlderThanSixMonths(getLatestGuestUpdateDate(source), now);
 }

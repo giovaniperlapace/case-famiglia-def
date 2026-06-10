@@ -4,9 +4,9 @@ import { getLatestGuestUpdateDate, needsUpdateBadge } from "./stale-update.ts";
 
 const NOW = new Date("2026-06-05T12:00:00.000Z");
 
-test("needsUpdateBadge marks guests without recent contact for update", () => {
-  assert.equal(needsUpdateBadge({ data_ultimo_contatto: "2025-12-04" }, NOW), true);
-  assert.equal(needsUpdateBadge({ data_ultimo_contatto: "2025-12-06" }, NOW), false);
+test("needsUpdateBadge marks exited guests without recent contact for update", () => {
+  assert.equal(needsUpdateBadge({ current_status: "USCITO", data_ultimo_contatto: "2025-12-04" }, NOW), true);
+  assert.equal(needsUpdateBadge({ current_status: "USCITO", data_ultimo_contatto: "2025-12-06" }, NOW), false);
 });
 
 test("needsUpdateBadge uses exit date for exited guests", () => {
@@ -36,6 +36,16 @@ test("needsUpdateBadge never marks deceased guests for update", () => {
   );
 });
 
+test("needsUpdateBadge never marks active guests for update", () => {
+  assert.equal(
+    needsUpdateBadge(
+      { current_status: "IN_ACCOGLIENZA", data_ingresso: "2025-01-01", data_ultimo_contatto: "2025-12-04" },
+      NOW
+    ),
+    false
+  );
+});
+
 test("latest follow-up contact wins over older status dates", () => {
   const latest = getLatestGuestUpdateDate({
     current_status: "USCITO",
@@ -53,7 +63,19 @@ test("latest follow-up contact wins over older status dates", () => {
   );
 });
 
-test("needsUpdateBadge falls back to entry or submission date when no later event exists", () => {
-  assert.equal(needsUpdateBadge({ data_ingresso: "2025-12-04", submitted_at: "2026-06-01" }, NOW), true);
-  assert.equal(needsUpdateBadge({ data_ingresso: null, submitted_at: "2026-01-01T00:00:00.000Z" }, NOW), false);
+test("needsUpdateBadge falls back to entry or submission date for exited guests when no later event exists", () => {
+  assert.equal(
+    needsUpdateBadge(
+      { current_status: "USCITO", data_ingresso: "2025-12-04", submitted_at: "2026-06-01" },
+      NOW
+    ),
+    true
+  );
+  assert.equal(
+    needsUpdateBadge(
+      { current_status: "USCITO", data_ingresso: null, submitted_at: "2026-01-01T00:00:00.000Z" },
+      NOW
+    ),
+    false
+  );
 });

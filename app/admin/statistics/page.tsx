@@ -2,17 +2,20 @@ import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getIncompleteDataFlags } from "@/lib/guests/incomplete-data";
 import { getCurrentStatus } from "@/lib/guests/status";
+import { needsUpdateBadge } from "@/lib/guests/stale-update";
 
 export const dynamic = "force-dynamic";
 
 type StatsRow = {
   id: string;
   struttura: string | null;
+  submitted_at: string | null;
   current_status: string | null;
   data_di_nascita: string | null;
   data_ingresso: string | null;
   data_uscita: string | null;
   data_decesso: string | null;
+  data_ultimo_contatto: string | null;
   tipo_aggiornamento: string | null;
 };
 
@@ -20,6 +23,9 @@ type IncompleteCounts = {
   missingBirthDate: number;
   exitedWithoutExitDate: number;
   deceasedWithoutDeathDate: number;
+  needsUpdate: number;
+  privacyCollected: number;
+  privacyMissing: number;
 };
 
 function parseDateValue(value: string | null | undefined) {
@@ -87,6 +93,12 @@ function incompleteHref(casa: string | null, filter: string) {
   return `/dashboard?${params.toString()}`;
 }
 
+function attentionHref(casa: string | null, filter: string) {
+  const params = new URLSearchParams({ attenzione: filter });
+  if (casa) params.set("struttura", casa);
+  return `/dashboard?${params.toString()}`;
+}
+
 function IncompleteCountLink({
   casa,
   count,
@@ -110,16 +122,55 @@ function IncompleteCountLink({
   );
 }
 
+function AttentionCountLink({
+  casa,
+  count,
+  filter,
+  label,
+}: {
+  casa: string | null;
+  count: number;
+  filter: string;
+  label: string;
+}) {
+  return (
+    <Link
+      href={attentionHref(casa, filter)}
+      aria-label={`${label}: ${count}`}
+      title={label}
+      style={{ color: "inherit", fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 3 }}
+    >
+      {count}
+    </Link>
+  );
+}
+
 export default async function AdminStatisticsPage() {
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
-      "id,struttura,current_status,data_di_nascita,data_ingresso,data_uscita,data_decesso,tipo_aggiornamento"
+      "id,struttura,submitted_at,current_status,data_di_nascita,data_ingresso,data_uscita,data_decesso,data_ultimo_contatto,tipo_aggiornamento"
     );
 
   const rows = (data ?? []) as StatsRow[];
+  const rowIds = rows.map((row) => row.id);
+  const { data: privacyDocuments } =
+    rowIds.length > 0
+      ? await supabase
+          .from("guest_privacy_documents")
+          .select("guest_id")
+          .in("guest_id", rowIds)
+      : { data: [] };
+  const privacyDocumentCounts = new Map<string, number>();
+
+  for (const document of (privacyDocuments ?? []) as Array<{ guest_id: string }>) {
+    privacyDocumentCounts.set(
+      document.guest_id,
+      (privacyDocumentCounts.get(document.guest_id) ?? 0) + 1
+    );
+  }
   const grouped = new Map<string, { inAccoglienza: number; storico: number }>();
   const incompleteGrouped = new Map<string, IncompleteCounts>();
   const durationGrouped = new Map<string, { exited: number[]; inAccoglienza: number[] }>();
@@ -134,12 +185,20 @@ export default async function AdminStatisticsPage() {
       missingBirthDate: 0,
       exitedWithoutExitDate: 0,
       deceasedWithoutDeathDate: 0,
+      needsUpdate: 0,
+      privacyCollected: 0,
+      privacyMissing: 0,
     };
     const durations = durationGrouped.get(casa) ?? { exited: [], inAccoglienza: [] };
     const ingresso = parseDateValue(row.data_ingresso);
 
     if (status === "IN_ACCOGLIENZA") {
       prev.inAccoglienza += 1;
+      if ((privacyDocumentCounts.get(row.id) ?? 0) > 0) {
+        incomplete.privacyCollected += 1;
+      } else {
+        incomplete.privacyMissing += 1;
+      }
       const currentStayDays = daysBetween(ingresso, today);
       if (currentStayDays !== null) {
         durations.inAccoglienza.push(currentStayDays);
@@ -167,6 +226,10 @@ export default async function AdminStatisticsPage() {
 
     if (incompleteFlags.deceasedWithoutDeathDate) {
       incomplete.deceasedWithoutDeathDate += 1;
+    }
+
+    if (needsUpdateBadge(row, now)) {
+      incomplete.needsUpdate += 1;
     }
 
     grouped.set(casa, prev);
@@ -230,8 +293,18 @@ export default async function AdminStatisticsPage() {
       missingBirthDate: acc.missingBirthDate + item.missingBirthDate,
       exitedWithoutExitDate: acc.exitedWithoutExitDate + item.exitedWithoutExitDate,
       deceasedWithoutDeathDate: acc.deceasedWithoutDeathDate + item.deceasedWithoutDeathDate,
+      needsUpdate: acc.needsUpdate + item.needsUpdate,
+      privacyCollected: acc.privacyCollected + item.privacyCollected,
+      privacyMissing: acc.privacyMissing + item.privacyMissing,
     }),
-    { missingBirthDate: 0, exitedWithoutExitDate: 0, deceasedWithoutDeathDate: 0 }
+    {
+      missingBirthDate: 0,
+      exitedWithoutExitDate: 0,
+      deceasedWithoutDeathDate: 0,
+      needsUpdate: 0,
+      privacyCollected: 0,
+      privacyMissing: 0,
+    }
   );
 
   return (
@@ -547,6 +620,36 @@ export default async function AdminStatisticsPage() {
                   >
                     Deceduto senza data morte
                   </th>
+                  <th
+                    style={{
+                      textAlign: "right",
+                      borderBottom: "1px solid var(--border)",
+                      padding: "8px 6px",
+                      width: 130,
+                    }}
+                  >
+                    Da aggiornare
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "right",
+                      borderBottom: "1px solid var(--border)",
+                      padding: "8px 6px",
+                      width: 150,
+                    }}
+                  >
+                    Privacy raccolta
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "right",
+                      borderBottom: "1px solid var(--border)",
+                      padding: "8px 6px",
+                      width: 150,
+                    }}
+                  >
+                    Privacy mancante
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -586,6 +689,30 @@ export default async function AdminStatisticsPage() {
                         label={`${item.casa}: deceduto senza data morte`}
                       />
                     </td>
+                    <td style={{ borderBottom: "1px solid var(--border)", padding: "8px 6px", textAlign: "right" }}>
+                      <AttentionCountLink
+                        casa={item.casa}
+                        count={item.needsUpdate}
+                        filter="update"
+                        label={`${item.casa}: da aggiornare`}
+                      />
+                    </td>
+                    <td style={{ borderBottom: "1px solid var(--border)", padding: "8px 6px", textAlign: "right" }}>
+                      <AttentionCountLink
+                        casa={item.casa}
+                        count={item.privacyCollected}
+                        filter="privacy_collected"
+                        label={`${item.casa}: privacy raccolta`}
+                      />
+                    </td>
+                    <td style={{ borderBottom: "1px solid var(--border)", padding: "8px 6px", textAlign: "right" }}>
+                      <AttentionCountLink
+                        casa={item.casa}
+                        count={item.privacyMissing}
+                        filter="privacy_missing"
+                        label={`${item.casa}: privacy mancante`}
+                      />
+                    </td>
                   </tr>
                 ))}
                 <tr>
@@ -612,6 +739,30 @@ export default async function AdminStatisticsPage() {
                       count={incompleteTotals.deceasedWithoutDeathDate}
                       filter="data_morte"
                       label="Totale: deceduto senza data morte"
+                    />
+                  </td>
+                  <td style={{ padding: "10px 6px 0", fontWeight: 700, textAlign: "right" }}>
+                    <AttentionCountLink
+                      casa={null}
+                      count={incompleteTotals.needsUpdate}
+                      filter="update"
+                      label="Totale: da aggiornare"
+                    />
+                  </td>
+                  <td style={{ padding: "10px 6px 0", fontWeight: 700, textAlign: "right" }}>
+                    <AttentionCountLink
+                      casa={null}
+                      count={incompleteTotals.privacyCollected}
+                      filter="privacy_collected"
+                      label="Totale: privacy raccolta"
+                    />
+                  </td>
+                  <td style={{ padding: "10px 6px 0", fontWeight: 700, textAlign: "right" }}>
+                    <AttentionCountLink
+                      casa={null}
+                      count={incompleteTotals.privacyMissing}
+                      filter="privacy_missing"
+                      label="Totale: privacy mancante"
                     />
                   </td>
                 </tr>
