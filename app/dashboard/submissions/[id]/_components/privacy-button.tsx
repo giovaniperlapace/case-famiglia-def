@@ -21,10 +21,6 @@ function hasValue(value: string | null | undefined): boolean {
   return Boolean(value?.trim());
 }
 
-function isPointerEventWithPressure(event: PointerEvent<HTMLCanvasElement>): boolean {
-  return event.pointerType === "mouse" || event.pressure > 0;
-}
-
 export default function PrivacyButton({
   guestId,
   nome,
@@ -204,14 +200,26 @@ export default function PrivacyButton({
   }
 
   function startDrawing(event: PointerEvent<HTMLCanvasElement>) {
-    if (!isPointerEventWithPressure(event)) return;
+    event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
+    const point = getCanvasPoint(event);
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
     drawingRef.current = true;
-    lastPointRef.current = getCanvasPoint(event);
+    lastPointRef.current = point;
+
+    if (context && point) {
+      context.beginPath();
+      context.arc(point.x, point.y, 1, 0, Math.PI * 2);
+      context.fillStyle = "#111827";
+      context.fill();
+      setHasSignature(true);
+    }
   }
 
   function draw(event: PointerEvent<HTMLCanvasElement>) {
     if (!drawingRef.current) return;
+    event.preventDefault();
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     const lastPoint = lastPointRef.current;
@@ -226,6 +234,7 @@ export default function PrivacyButton({
   }
 
   function stopDrawing(event: PointerEvent<HTMLCanvasElement>) {
+    event.preventDefault();
     drawingRef.current = false;
     lastPointRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
