@@ -8,6 +8,7 @@ import { getCurrentStatus } from "@/lib/guests/status";
 import { STALE_UPDATE_BADGE_LABEL, needsUpdateBadge } from "@/lib/guests/stale-update";
 import DeleteGuestButton from "./delete-guest-button";
 import ModificaAggiornaHelp from "./modifica-aggiorna-help";
+import PrivacyButton from "./_components/privacy-button";
 
 export const dynamic = "force-dynamic";
 
@@ -487,6 +488,12 @@ export default async function SubmissionDetailPage({
               <button type="button">Aggiorna lo stato</button>
             </Link>
           )}
+          <PrivacyButton
+            guestId={row.id}
+            nome={row.nome_della_persona}
+            cognome={row.cognome}
+            dataDiNascita={row.data_di_nascita}
+          />
           <ModificaAggiornaHelp />
         </div>
         <div style={{ marginLeft: "auto", alignSelf: "center" }}>
