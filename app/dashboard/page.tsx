@@ -21,7 +21,28 @@ export default async function DashboardPage() {
     )
     .order("submitted_at", { ascending: false });
 
-  const rows = (data ?? []) as SubmissionRow[];
+  const baseRows = (data ?? []) as Omit<SubmissionRow, "privacy_documents_count">[];
+  const rowIds = baseRows.map((row) => row.id);
+  const { data: privacyDocuments } =
+    rowIds.length > 0
+      ? await supabase
+          .from("guest_privacy_documents")
+          .select("guest_id")
+          .in("guest_id", rowIds)
+      : { data: [] };
+  const privacyDocumentCounts = new Map<string, number>();
+
+  for (const document of (privacyDocuments ?? []) as Array<{ guest_id: string }>) {
+    privacyDocumentCounts.set(
+      document.guest_id,
+      (privacyDocumentCounts.get(document.guest_id) ?? 0) + 1
+    );
+  }
+
+  const rows: SubmissionRow[] = baseRows.map((row) => ({
+    ...row,
+    privacy_documents_count: privacyDocumentCounts.get(row.id) ?? 0,
+  }));
   const activeCount = rows.filter((row) => deriveGuestStatus(row) === "In accoglienza").length;
   const exitedCount = rows.filter((row) => deriveGuestStatus(row) === "Uscito").length;
   const deceasedCount = rows.filter((row) => deriveGuestStatus(row) === "Deceduto").length;

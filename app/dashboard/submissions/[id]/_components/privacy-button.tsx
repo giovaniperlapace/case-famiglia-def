@@ -9,6 +9,7 @@ type PrivacyButtonProps = {
   cognome: string | null;
   dataDiNascita: string | null;
   initialHasPrivacyDocuments: boolean;
+  requiresPrivacy: boolean;
 };
 
 type UploadKind = "photo" | "upload";
@@ -55,6 +56,7 @@ export default function PrivacyButton({
   cognome,
   dataDiNascita,
   initialHasPrivacyDocuments,
+  requiresPrivacy,
 }: PrivacyButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +73,7 @@ export default function PrivacyButton({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const isMissingRequiredPrivacy = requiresPrivacy && !hasPrivacyDocuments;
 
   function validateGuest(): boolean {
     setError(null);
@@ -349,8 +352,20 @@ export default function PrivacyButton({
       <button
         type="button"
         onClick={openPrivacyFlow}
-        style={hasPrivacyDocuments ? privacyCompletedButtonStyle : undefined}
-        title={hasPrivacyDocuments ? "Privacy acquisita" : "Gestisci privacy"}
+        style={
+          hasPrivacyDocuments
+            ? privacyCompletedButtonStyle
+            : isMissingRequiredPrivacy
+              ? privacyMissingButtonStyle
+              : undefined
+        }
+        title={
+          hasPrivacyDocuments
+            ? "Privacy acquisita"
+            : isMissingRequiredPrivacy
+              ? "Privacy da acquisire"
+              : "Gestisci privacy"
+        }
       >
         Privacy
       </button>
@@ -579,6 +594,12 @@ const privacyCompletedButtonStyle: CSSProperties = {
   borderColor: "#166534",
   background: "linear-gradient(180deg, #22a56f 0%, #166534 100%)",
   boxShadow: "0 1px 2px rgba(22, 101, 52, 0.25)",
+};
+
+const privacyMissingButtonStyle: CSSProperties = {
+  borderColor: "#991b1b",
+  background: "linear-gradient(180deg, #ef4444 0%, #b91c1c 100%)",
+  boxShadow: "0 1px 2px rgba(185, 28, 28, 0.28)",
 };
 
 const documentRowStyle: CSSProperties = {

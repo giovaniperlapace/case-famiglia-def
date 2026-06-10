@@ -24,6 +24,7 @@ export type SubmissionRow = {
   data_decesso: string | null;
   data_ultimo_contatto: string | null;
   dove_dorme: string | null;
+  privacy_documents_count: number;
 };
 
 type SortKey =
@@ -44,7 +45,7 @@ type Filters = {
 };
 
 type IncompleteFilter = "data_nascita" | "data_uscita" | "data_morte";
-type AttentionFilter = "" | "completion" | "update";
+type AttentionFilter = "" | "completion" | "update" | "privacy";
 
 type RowView = {
   row: SubmissionRow;
@@ -58,6 +59,7 @@ type RowView = {
   updatedAtTs: number;
   needsUpdate: boolean;
   needsCompletion: boolean;
+  needsPrivacy: boolean;
 };
 
 function formatDateTime(value: string | null) {
@@ -194,6 +196,21 @@ const INCOMPLETE_DATA_BADGE_STYLE: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
+const PRIVACY_BADGE_STYLE: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "1px solid #2563eb",
+  borderRadius: 999,
+  background: "#dbeafe",
+  color: "#1e40af",
+  fontSize: "0.72rem",
+  fontWeight: 800,
+  lineHeight: 1,
+  padding: "0.22rem 0.45rem",
+  whiteSpace: "nowrap",
+};
+
 export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -229,11 +246,12 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
           row.id;
         const submittedAtLabel = formatDateTime(row.submitted_at);
         const updatedAtLabel = formatDateTime(row.updated_at);
+        const stato = deriveGuestStatus(row);
         return {
           row,
           guest,
           struttura: row.struttura ?? "n/d",
-          stato: deriveGuestStatus(row),
+          stato,
           doveDorme: row.dove_dorme?.trim() || "n/d",
           submittedAtLabel,
           updatedAtLabel,
@@ -241,6 +259,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
           updatedAtTs: toTimestamp(row.updated_at),
           needsUpdate: needsUpdateBadge(row),
           needsCompletion: hasIncompleteData(row),
+          needsPrivacy: stato === "In accoglienza" && row.privacy_documents_count === 0,
         };
       }),
     [rows]
@@ -267,6 +286,9 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
         return false;
       }
       if (attentionFilter === "update" && !item.needsUpdate) {
+        return false;
+      }
+      if (attentionFilter === "privacy" && !item.needsPrivacy) {
         return false;
       }
       if (incompleteFilter && !matchesIncompleteDataFilter(item.row, incompleteFilter)) {
@@ -371,6 +393,18 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
             aria-pressed={attentionFilter === "update"}
           >
             Solo Da aggiornare
+          </button>
+          <button
+            type="button"
+            style={
+              attentionFilter === "privacy"
+                ? ACTIVE_TABLE_TOOL_BUTTON_STYLE
+                : TABLE_TOOL_BUTTON_STYLE
+            }
+            onClick={() => setAttentionFilter((prev) => (prev === "privacy" ? "" : "privacy"))}
+            aria-pressed={attentionFilter === "privacy"}
+          >
+            Solo Privacy
           </button>
           <button
             type="button"
@@ -581,6 +615,14 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                         title="Record con dati obbligatori mancanti"
                       >
                         Da completare
+                      </span>
+                    ) : null}
+                    {item.needsPrivacy ? (
+                      <span
+                        style={PRIVACY_BADGE_STYLE}
+                        title="Privacy non ancora acquisita"
+                      >
+                        Privacy
                       </span>
                     ) : null}
                   </div>

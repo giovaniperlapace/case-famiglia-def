@@ -350,6 +350,9 @@ export default async function SubmissionDetailPage({
     .from("guest_privacy_documents")
     .select("id", { count: "exact", head: true })
     .eq("guest_id", row.id);
+  const hasPrivacyDocuments = (privacyDocumentsCount ?? 0) > 0;
+  const requiresPrivacy = currentStatus === "IN_ACCOGLIENZA";
+  const needsPrivacy = requiresPrivacy && !hasPrivacyDocuments;
   const showUscitaSection = Boolean(row.data_uscita && row.data_uscita.trim());
   const ingressoIncomeTypes = [
     isTruthy(row.tipo_di_reddito_pensione) ? "Pensione" : null,
@@ -434,7 +437,29 @@ export default async function SubmissionDetailPage({
           ← Dashboard
         </Link>
       </p>
-      <h1>Scheda ospite</h1>
+      <h1 style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span>Scheda ospite</span>
+        {needsPrivacy ? (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "1px solid #991b1b",
+              borderRadius: 999,
+              background: "#fee2e2",
+              color: "#991b1b",
+              fontSize: "0.86rem",
+              fontWeight: 900,
+              lineHeight: 1,
+              padding: "0.35rem 0.65rem",
+              textTransform: "uppercase",
+            }}
+          >
+            ACQUISIRE PRIVACY
+          </span>
+        ) : null}
+      </h1>
       <p
         className="muted"
         style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}
@@ -497,7 +522,8 @@ export default async function SubmissionDetailPage({
             nome={row.nome_della_persona}
             cognome={row.cognome}
             dataDiNascita={row.data_di_nascita}
-            initialHasPrivacyDocuments={(privacyDocumentsCount ?? 0) > 0}
+            initialHasPrivacyDocuments={hasPrivacyDocuments}
+            requiresPrivacy={requiresPrivacy}
           />
           <ModificaAggiornaHelp />
         </div>
