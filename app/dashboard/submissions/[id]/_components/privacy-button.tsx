@@ -8,9 +8,19 @@ type PrivacyButtonProps = {
   nome: string | null;
   cognome: string | null;
   dataDiNascita: string | null;
+  initialHasPrivacyDocuments: boolean;
 };
 
 type UploadKind = "photo" | "upload";
+type PrivacyDocumentType = "photo" | "upload" | "electronic_signature";
+type PrivacyDocument = {
+  id: string;
+  document_type: PrivacyDocumentType;
+  file_name: string;
+  mime_type: string;
+  created_at: string;
+  signed_url: string | null;
+};
 
 const ERROR_MISSING_BIRTH_DATE =
   "Prima di stampare e inserire la privacy è necessario aggiungere la data di nascita.";
@@ -21,16 +31,38 @@ function hasValue(value: string | null | undefined): boolean {
   return Boolean(value?.trim());
 }
 
+function formatDocumentType(type: PrivacyDocumentType): string {
+  if (type === "photo") return "Certificato acquisito con foto";
+  if (type === "upload") return "File privacy acquisito";
+  return "Firma elettronica";
+}
+
+function formatDateTime(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "n/d";
+  return new Intl.DateTimeFormat("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
 export default function PrivacyButton({
   guestId,
   nome,
   cognome,
   dataDiNascita,
+  initialHasPrivacyDocuments,
 }: PrivacyButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [documents, setDocuments] = useState<PrivacyDocument[]>([]);
+  const [hasPrivacyDocuments, setHasPrivacyDocuments] = useState(initialHasPrivacyDocuments);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -54,9 +86,38 @@ export default function PrivacyButton({
     return true;
   }
 
+  async function loadDocuments() {
+    setIsLoadingDocuments(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/guests/${guestId}/privacy/documents`, {
+        method: "GET",
+      });
+      const payload = (await response.json()) as {
+        documents?: PrivacyDocument[];
+        error?: string;
+      };
+
+      if (!response.ok) {
+        setError(payload.error ?? "Impossibile caricare i documenti privacy.");
+        return;
+      }
+
+      const nextDocuments = payload.documents ?? [];
+      setDocuments(nextDocuments);
+      setHasPrivacyDocuments(nextDocuments.length > 0);
+    } catch {
+      setError("Impossibile caricare i documenti privacy.");
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  }
+
   function openPrivacyFlow() {
     if (!validateGuest()) return;
     setIsOpen(true);
+    void loadDocuments();
   }
 
   async function printCertificate() {
@@ -114,6 +175,7 @@ export default function PrivacyButton({
         return;
       }
       setMessage("Documento privacy acquisito correttamente.");
+      await loadDocuments();
     } catch {
       setError("Impossibile salvare il documento privacy.");
     } finally {
@@ -156,6 +218,7 @@ export default function PrivacyButton({
       }
       setMessage("Firma privacy salvata correttamente.");
       setSignatureOpen(false);
+      await loadDocuments();
     } catch {
       setError("Impossibile salvare la firma privacy.");
     } finally {
@@ -247,9 +310,48 @@ export default function PrivacyButton({
     setHasSignature(false);
   }
 
+  async function deleteDocument(documentId: string) {
+    setIsUploading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/guests/${guestId}/privacy/documents?document_id=${encodeURIComponent(documentId)}`,
+        { method: "DELETE" }
+      );
+      const payload = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        setError(payload.error ?? "Impossibile cancellare il documento privacy.");
+        return;
+      }
+
+      setMessage("Documento privacy cancellato.");
+      await loadDocuments();
+    } catch {
+      setError("Impossibile cancellare il documento privacy.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  function openDocument(document: PrivacyDocument) {
+    if (!document.signed_url) {
+      setError("Documento non disponibile per la visualizzazione.");
+      return;
+    }
+    window.open(document.signed_url, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <>
-      <button type="button" onClick={openPrivacyFlow}>
+      <button
+        type="button"
+        onClick={openPrivacyFlow}
+        style={hasPrivacyDocuments ? privacyCompletedButtonStyle : undefined}
+        title={hasPrivacyDocuments ? "Privacy acquisita" : "Gestisci privacy"}
+      >
         Privacy
       </button>
 
@@ -274,36 +376,69 @@ export default function PrivacyButton({
                 Chiudi
               </button>
             </div>
-            <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-              <button type="button" disabled={isUploading} onClick={() => void printCertificate()}>
-                Stampa il certificato in PDF da firmare
-              </button>
-              <button
-                type="button"
-                disabled={isUploading}
-                onClick={() => photoInputRef.current?.click()}
-              >
-                Acquisisci il certificato con una foto
-              </button>
-              <button
-                type="button"
-                disabled={isUploading}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Acquisisci un file PDF, JPEG o PNG
-              </button>
-              <button
-                type="button"
-                disabled={isUploading}
-                onClick={() => {
-                  setError(null);
-                  setMessage(null);
-                  setSignatureOpen(true);
-                }}
-              >
-                Firma il form in versione elettronica
-              </button>
-            </div>
+            {isLoadingDocuments ? <p className="muted">Caricamento documenti privacy...</p> : null}
+            {documents.length > 0 ? (
+              <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+                {documents.map((document) => (
+                  <div key={document.id} style={documentRowStyle}>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 800 }}>{formatDocumentType(document.document_type)}</p>
+                      <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+                        {formatDateTime(document.created_at)} · {document.file_name}
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        disabled={isUploading || !document.signed_url}
+                        onClick={() => openDocument(document)}
+                      >
+                        Visualizza
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isUploading}
+                        onClick={() => void deleteDocument(document.id)}
+                        style={dangerButtonStyle}
+                      >
+                        Cancella
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+                <button type="button" disabled={isUploading} onClick={() => void printCertificate()}>
+                  Stampa il certificato in PDF da firmare
+                </button>
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => photoInputRef.current?.click()}
+                >
+                  Acquisisci il certificato con una foto
+                </button>
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Acquisisci un file PDF, JPEG o PNG
+                </button>
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => {
+                    setError(null);
+                    setMessage(null);
+                    setSignatureOpen(true);
+                  }}
+                >
+                  Firma il form in versione elettronica
+                </button>
+              </div>
+            )}
             {message ? (
               <p role="status" style={{ color: "var(--accent)", fontWeight: 700 }}>
                 {message}
@@ -437,5 +572,29 @@ const secondaryButtonStyle: CSSProperties = {
   borderColor: "var(--border)",
   background: "#ffffff",
   color: "var(--fg)",
+  boxShadow: "none",
+};
+
+const privacyCompletedButtonStyle: CSSProperties = {
+  borderColor: "#166534",
+  background: "linear-gradient(180deg, #22a56f 0%, #166534 100%)",
+  boxShadow: "0 1px 2px rgba(22, 101, 52, 0.25)",
+};
+
+const documentRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 10,
+  alignItems: "center",
+  justifyContent: "space-between",
+  flexWrap: "wrap",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  padding: 10,
+};
+
+const dangerButtonStyle: CSSProperties = {
+  borderColor: "var(--danger)",
+  background: "#ffffff",
+  color: "var(--danger)",
   boxShadow: "none",
 };

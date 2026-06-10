@@ -346,6 +346,10 @@ export default async function SubmissionDetailPage({
   const needsUpdate = needsUpdateBadge(row);
   const needsCompletion = hasIncompleteData(row);
   const timeline = await getGuestTimeline(supabase, row.id);
+  const { count: privacyDocumentsCount } = await supabase
+    .from("guest_privacy_documents")
+    .select("id", { count: "exact", head: true })
+    .eq("guest_id", row.id);
   const showUscitaSection = Boolean(row.data_uscita && row.data_uscita.trim());
   const ingressoIncomeTypes = [
     isTruthy(row.tipo_di_reddito_pensione) ? "Pensione" : null,
@@ -493,6 +497,7 @@ export default async function SubmissionDetailPage({
             nome={row.nome_della_persona}
             cognome={row.cognome}
             dataDiNascita={row.data_di_nascita}
+            initialHasPrivacyDocuments={(privacyDocumentsCount ?? 0) > 0}
           />
           <ModificaAggiornaHelp />
         </div>

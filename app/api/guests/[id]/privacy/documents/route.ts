@@ -10,9 +10,22 @@ const DOCUMENT_TYPES = new Set(["photo", "upload", "electronic_signature"]);
 type DocumentType = "photo" | "upload" | "electronic_signature";
 
 type PrivacyGuestRow = {
+  id: string;
   nome_della_persona: string | null;
   cognome: string | null;
   data_di_nascita: string | null;
+};
+
+type PrivacyDocumentRow = {
+  id: string;
+  document_type: DocumentType;
+  file_bucket: string;
+  file_path: string;
+  file_name: string;
+  mime_type: string;
+  file_size: number;
+  consent_accepted: boolean | null;
+  created_at: string;
 };
 
 function hasValue(value: string | null | undefined): value is string {
@@ -46,36 +59,104 @@ async function readSignatureFile(formData: FormData): Promise<File | null> {
   return new File([bytes], "firma-privacy.png", { type: "image/png" });
 }
 
+async function requireAuthorizedGuest(id: string) {
+  const { supabase, user, role, appUserId } = await getServerAuthContext();
+
+  if (!user) {
+    return {
+      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      appUserId,
+    };
+  }
+
+  if (!role) {
+    return {
+      error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      appUserId,
+    };
+  }
+
+  const { data: guest, error: guestError } = await supabase
+    .from("case_alloggio_submissions")
+    .select("id,nome_della_persona,cognome,data_di_nascita")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (guestError) {
+    return {
+      error: NextResponse.json({ error: guestError.message }, { status: 400 }),
+      appUserId,
+    };
+  }
+
+  if (!guest) {
+    return {
+      error: NextResponse.json({ error: "Guest not found" }, { status: 404 }),
+      appUserId,
+    };
+  }
+
+  return { guest: guest as PrivacyGuestRow, appUserId };
+}
+
+export async function GET(
+  _req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  const authorized = await requireAuthorizedGuest(id);
+
+  if (authorized.error) {
+    return authorized.error;
+  }
+
+  const service = createSupabaseServiceClient();
+  const { data: documents, error } = await service
+    .from("guest_privacy_documents")
+    .select(
+      "id,document_type,file_bucket,file_path,file_name,mime_type,file_size,consent_accepted,created_at"
+    )
+    .eq("guest_id", id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  const documentsWithUrls = await Promise.all(
+    ((documents ?? []) as PrivacyDocumentRow[]).map(async (document) => {
+      const { data: signed, error: signedError } = await service.storage
+        .from(document.file_bucket)
+        .createSignedUrl(document.file_path, 60 * 10);
+
+      return {
+        id: document.id,
+        document_type: document.document_type,
+        file_name: document.file_name,
+        mime_type: document.mime_type,
+        file_size: document.file_size,
+        consent_accepted: document.consent_accepted,
+        created_at: document.created_at,
+        signed_url: signedError ? null : signed.signedUrl,
+      };
+    })
+  );
+
+  return NextResponse.json({ documents: documentsWithUrls });
+}
+
 export async function POST(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
-  const { supabase, user, role, appUserId } = await getServerAuthContext();
+  const authorized = await requireAuthorizedGuest(id);
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (authorized.error) {
+    return authorized.error;
   }
 
-  if (!role) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const { data: guest, error: guestError } = await supabase
-    .from("case_alloggio_submissions")
-    .select("nome_della_persona,cognome,data_di_nascita")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (guestError) {
-    return NextResponse.json({ error: guestError.message }, { status: 400 });
-  }
-
-  if (!guest) {
-    return NextResponse.json({ error: "Guest not found" }, { status: 404 });
-  }
-
-  const row = guest as PrivacyGuestRow;
+  const row = authorized.guest;
   if (!hasValue(row.data_di_nascita)) {
     return NextResponse.json(
       {
@@ -165,7 +246,7 @@ export async function POST(
       mime_type: file.type,
       file_size: file.size,
       consent_accepted: documentType === "electronic_signature" ? consentAccepted : null,
-      created_by: appUserId,
+      created_by: authorized.appUserId,
     })
     .select("id,created_at,document_type,file_name")
     .single();
@@ -176,4 +257,60 @@ export async function POST(
   }
 
   return NextResponse.json({ document: inserted });
+}
+
+export async function DELETE(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  const authorized = await requireAuthorizedGuest(id);
+
+  if (authorized.error) {
+    return authorized.error;
+  }
+
+  const url = new URL(req.url);
+  const documentId = url.searchParams.get("document_id");
+
+  if (!documentId) {
+    return NextResponse.json({ error: "Documento privacy mancante." }, { status: 400 });
+  }
+
+  const service = createSupabaseServiceClient();
+  const { data: document, error: documentError } = await service
+    .from("guest_privacy_documents")
+    .select("id,file_bucket,file_path")
+    .eq("id", documentId)
+    .eq("guest_id", id)
+    .maybeSingle();
+
+  if (documentError) {
+    return NextResponse.json({ error: documentError.message }, { status: 400 });
+  }
+
+  if (!document) {
+    return NextResponse.json({ error: "Documento privacy non trovato." }, { status: 404 });
+  }
+
+  const row = document as Pick<PrivacyDocumentRow, "file_bucket" | "file_path">;
+  const { error: storageError } = await service.storage
+    .from(row.file_bucket)
+    .remove([row.file_path]);
+
+  if (storageError) {
+    return NextResponse.json({ error: storageError.message }, { status: 400 });
+  }
+
+  const { error: deleteError } = await service
+    .from("guest_privacy_documents")
+    .delete()
+    .eq("id", documentId)
+    .eq("guest_id", id);
+
+  if (deleteError) {
+    return NextResponse.json({ error: deleteError.message }, { status: 400 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
