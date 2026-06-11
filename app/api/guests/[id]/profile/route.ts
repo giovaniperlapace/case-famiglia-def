@@ -41,6 +41,9 @@ const ALLOWED_FIELDS = new Set([
   "al_momento_dell_ingresso_ha_residenza",
   "dove_dormiva",
   "principale_causa_poverta",
+  "in_esecuzione_penale_esterna",
+  "esecuzione_penale_esterna_data_inizio",
+  "esecuzione_penale_esterna_data_fine",
   "al_momento_dell_ingresso_ha_i_seguenti_documenti",
   "al_momento_dell_uscita_ha_i_seguenti_documenti",
   "siamo_ancora_in_contatto",
@@ -301,6 +304,33 @@ export async function PATCH(
     !isAllowed(RESIDENZA_OPTIONS, patch.al_momento_dell_ingresso_ha_residenza)
   ) {
     return NextResponse.json({ error: "Residenza all'ingresso non valida." }, { status: 400 });
+  }
+
+  if (
+    patch.in_esecuzione_penale_esterna &&
+    !YES_NO_OPTIONS.has(patch.in_esecuzione_penale_esterna)
+  ) {
+    return NextResponse.json(
+      { error: "Valore non valido per 'Esecuzione penale esterna'. Usa Sì/No." },
+      { status: 400 }
+    );
+  }
+
+  for (const [field, label] of [
+    ["esecuzione_penale_esterna_data_inizio", "Data inizio esecuzione penale esterna"],
+    ["esecuzione_penale_esterna_data_fine", "Data fine esecuzione penale esterna"],
+  ] as const) {
+    if (patch[field] && !isValidItalianDate(patch[field])) {
+      return NextResponse.json(
+        { error: `${label} non valida. Usa il formato gg/mm/aaaa.` },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (patch.in_esecuzione_penale_esterna === "No") {
+    patch.esecuzione_penale_esterna_data_inizio = null;
+    patch.esecuzione_penale_esterna_data_fine = null;
   }
 
   if (patch.dove_dormiva) {

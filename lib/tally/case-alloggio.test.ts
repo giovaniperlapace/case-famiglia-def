@@ -102,3 +102,24 @@ test("legacy Convivenza housing answers are mapped to Sant'Egidio housing", () =
   assert.equal(mapped.row.dove_dormiva, "Convivenza di Sant'Egidio");
   assert.equal(mapped.row.dove_dorme, "Convivenza di Sant'Egidio");
 });
+
+test("external criminal sentence entry fields are mapped from Tally labels", () => {
+  const payload = {
+    data: {
+      submissionId: "sub_8",
+      fields: [
+        {
+          label: "Al momento dell'ingresso è in esecuzione penale esterna",
+          value: "Sì",
+        },
+        { label: "Data di inizio esecuzione penale esterna", value: "01/06/2026" },
+        { label: "Data di fine esecuzione penale esterna", value: "30/09/2026" },
+      ],
+    },
+  };
+
+  const mapped = mapCaseAlloggioSubmission(payload);
+  assert.equal(mapped.row.in_esecuzione_penale_esterna, "Sì");
+  assert.equal(mapped.row.esecuzione_penale_esterna_data_inizio, "01/06/2026");
+  assert.equal(mapped.row.esecuzione_penale_esterna_data_fine, "30/09/2026");
+});

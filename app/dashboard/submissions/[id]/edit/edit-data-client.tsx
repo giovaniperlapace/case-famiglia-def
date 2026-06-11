@@ -74,6 +74,9 @@ type EditableGuestValues = {
   al_momento_dell_ingresso_ha_residenza: string | null;
   dove_dormiva: string | null;
   principale_causa_poverta: string | null;
+  in_esecuzione_penale_esterna: string | null;
+  esecuzione_penale_esterna_data_inizio: string | null;
+  esecuzione_penale_esterna_data_fine: string | null;
   al_momento_dell_ingresso_ha_i_seguenti_documenti: string | null;
   al_momento_dell_uscita_ha_i_seguenti_documenti: string | null;
   siamo_ancora_in_contatto: string | null;
@@ -194,6 +197,15 @@ function initForm(initialValues: EditableGuestValues): EditableForm {
       initialValues.al_momento_dell_ingresso_ha_residenza ?? "",
     dove_dormiva: normalizeDoveDormeOption(initialValues.dove_dormiva) ?? "",
     principale_causa_poverta: initialValues.principale_causa_poverta ?? "",
+    in_esecuzione_penale_esterna: normalizeYesNo(
+      initialValues.in_esecuzione_penale_esterna ?? ""
+    ),
+    esecuzione_penale_esterna_data_inizio: normalizeToIsoDate(
+      initialValues.esecuzione_penale_esterna_data_inizio ?? ""
+    ),
+    esecuzione_penale_esterna_data_fine: normalizeToIsoDate(
+      initialValues.esecuzione_penale_esterna_data_fine ?? ""
+    ),
     al_momento_dell_ingresso_ha_i_seguenti_documenti:
       initialValues.al_momento_dell_ingresso_ha_i_seguenti_documenti ?? "",
     al_momento_dell_uscita_ha_i_seguenti_documenti:
@@ -360,6 +372,7 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
     .filter((item) => isYes(form[item.key]))
     .map((item) => item.label);
   const needsIngressoWorkType = hasIngressoIncome && selectedIngressoIncomeTypes.includes("Reddito da lavoro");
+  const hasEsecuzionePenaleEsterna = form.in_esecuzione_penale_esterna === "Sì";
   const selectedDependencies = DIPENDENZE_CHECKBOXES.filter((item) => isYes(form[item.key])).map(
     (item) => item.label
   );
@@ -448,6 +461,29 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
       !isAllowed(DOVE_DORME_OPTIONS, normalizeDoveDormeOption(form.dove_dormiva) ?? "")
     ) {
       return "Dove dormiva non valido.";
+    }
+
+    if (
+      form.in_esecuzione_penale_esterna &&
+      !isAllowed(YES_NO_OPTIONS, form.in_esecuzione_penale_esterna)
+    ) {
+      return "Il campo 'Esecuzione penale esterna' accetta solo Sì/No.";
+    }
+
+    if (
+      hasEsecuzionePenaleEsterna &&
+      form.esecuzione_penale_esterna_data_inizio &&
+      !isValidIsoDate(form.esecuzione_penale_esterna_data_inizio)
+    ) {
+      return "Data inizio esecuzione penale esterna non valida.";
+    }
+
+    if (
+      hasEsecuzionePenaleEsterna &&
+      form.esecuzione_penale_esterna_data_fine &&
+      !isValidIsoDate(form.esecuzione_penale_esterna_data_fine)
+    ) {
+      return "Data fine esecuzione penale esterna non valida.";
     }
 
     if (
@@ -613,6 +649,15 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
         data_di_nascita: form.data_di_nascita ? isoToItalianDate(form.data_di_nascita) : "",
         data_ingresso: form.data_ingresso ? isoToItalianDate(form.data_ingresso) : "",
         dove_dormiva: normalizeDoveDormeOption(form.dove_dormiva) ?? "",
+        in_esecuzione_penale_esterna: form.in_esecuzione_penale_esterna,
+        esecuzione_penale_esterna_data_inizio:
+          hasEsecuzionePenaleEsterna && form.esecuzione_penale_esterna_data_inizio
+            ? isoToItalianDate(form.esecuzione_penale_esterna_data_inizio)
+            : "",
+        esecuzione_penale_esterna_data_fine:
+          hasEsecuzionePenaleEsterna && form.esecuzione_penale_esterna_data_fine
+            ? isoToItalianDate(form.esecuzione_penale_esterna_data_fine)
+            : "",
         contatto_della_persona: toE164(form.contatto_della_persona),
         nazionalita: normalizeNationality(form.nazionalita) ?? form.nazionalita.trim(),
       };
@@ -878,6 +923,51 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
                 })}
               </div>
             </div>
+          </label>
+
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Esecuzione penale esterna</span>
+            <select
+              value={form.in_esecuzione_penale_esterna}
+              onChange={(e) => {
+                const value = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  in_esecuzione_penale_esterna: value,
+                  esecuzione_penale_esterna_data_inizio:
+                    value === "Sì" ? prev.esecuzione_penale_esterna_data_inizio : "",
+                  esecuzione_penale_esterna_data_fine:
+                    value === "Sì" ? prev.esecuzione_penale_esterna_data_fine : "",
+                }));
+              }}
+            >
+              <option value="">Seleziona...</option>
+              {YES_NO_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Data inizio esecuzione penale esterna</span>
+            <input
+              type="date"
+              value={form.esecuzione_penale_esterna_data_inizio}
+              lang="it-IT"
+              onChange={(e) => setField("esecuzione_penale_esterna_data_inizio", e.target.value)}
+              disabled={!hasEsecuzionePenaleEsterna}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Data fine esecuzione penale esterna</span>
+            <input
+              type="date"
+              value={form.esecuzione_penale_esterna_data_fine}
+              lang="it-IT"
+              onChange={(e) => setField("esecuzione_penale_esterna_data_fine", e.target.value)}
+              disabled={!hasEsecuzionePenaleEsterna}
+            />
           </label>
 
           <label style={{ display: "grid", gap: 4, gridColumn: "1 / -1" }}>
