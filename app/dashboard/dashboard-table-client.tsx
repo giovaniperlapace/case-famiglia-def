@@ -46,6 +46,7 @@ type Filters = {
 
 type IncompleteFilter = "data_nascita" | "data_uscita" | "data_morte";
 type AttentionFilter = "" | "completion" | "update" | "privacy" | "privacy_collected";
+type ColumnKey = "guest" | "struttura" | "stato" | "dove_dorme" | "submitted_at" | "updated_at";
 
 type RowView = {
   row: SubmissionRow;
@@ -154,6 +155,26 @@ const TABLE_HEADER_BUTTON_STYLE: CSSProperties = {
   fontSize: "inherit",
 };
 
+const COLUMN_HEADER_CONTENT_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+};
+
+const HIDE_COLUMN_BUTTON_STYLE: CSSProperties = {
+  border: "1px solid var(--border)",
+  background: "transparent",
+  color: "var(--muted)",
+  borderRadius: 6,
+  padding: "0.2rem 0.35rem",
+  boxShadow: "none",
+  fontWeight: 600,
+  fontSize: "0.72rem",
+  lineHeight: 1,
+  whiteSpace: "nowrap",
+};
+
 const TABLE_TOOL_BUTTON_STYLE: CSSProperties = {
   border: "1px solid var(--border)",
   background: "var(--panel)",
@@ -230,6 +251,24 @@ const PRIVACY_BADGE_STYLE: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
+const COLUMN_KEYS: ColumnKey[] = [
+  "guest",
+  "struttura",
+  "stato",
+  "dove_dorme",
+  "submitted_at",
+  "updated_at",
+];
+
+const DEFAULT_VISIBLE_COLUMNS: Record<ColumnKey, boolean> = {
+  guest: true,
+  struttura: true,
+  stato: true,
+  dove_dorme: false,
+  submitted_at: true,
+  updated_at: true,
+};
+
 export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -239,7 +278,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
   const initialAttentionFilter = getAttentionFilter(searchParams.get("attenzione"));
   const [sortKey, setSortKey] = useState<SortKey>("submitted_at");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [showDoveDorme, setShowDoveDorme] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState(DEFAULT_VISIBLE_COLUMNS);
   const [attentionFilter, setAttentionFilter] = useState<AttentionFilter>(initialAttentionFilter);
   const [filters, setFilters] = useState<Filters>({
     guest: "",
@@ -378,6 +417,47 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
     return sortDirection === "asc" ? "↑" : "↓";
   }
 
+  function hideColumn(column: ColumnKey) {
+    setVisibleColumns((prev) => ({ ...prev, [column]: false }));
+  }
+
+  function showAllColumns() {
+    setVisibleColumns({
+      guest: true,
+      struttura: true,
+      stato: true,
+      dove_dorme: true,
+      submitted_at: true,
+      updated_at: true,
+    });
+  }
+
+  function renderColumnHeader(column: ColumnKey, label: string, sort?: SortKey) {
+    return (
+      <div style={COLUMN_HEADER_CONTENT_STYLE}>
+        {sort ? (
+          <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort(sort)}>
+            {label} {sortArrow(sort)}
+          </button>
+        ) : (
+          <span>{label}</span>
+        )}
+        <button
+          type="button"
+          style={HIDE_COLUMN_BUTTON_STYLE}
+          onClick={() => hideColumn(column)}
+          aria-label={`Nascondi colonna ${label}`}
+          title={`Nascondi colonna ${label}`}
+        >
+          Nascondi
+        </button>
+      </div>
+    );
+  }
+
+  const visibleColumnCount = COLUMN_KEYS.filter((column) => visibleColumns[column]).length;
+  const visibleDataColumnCount = Math.max(visibleColumnCount, 1);
+
   return (
     <>
       <div
@@ -430,13 +510,8 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
           >
             Solo Privacy
           </button>
-          <button
-            type="button"
-            style={TABLE_TOOL_BUTTON_STYLE}
-            onClick={() => setShowDoveDorme((prev) => !prev)}
-            aria-pressed={showDoveDorme}
-          >
-            {showDoveDorme ? "Nascondi Dove dorme" : "Mostra Dove dorme"}
+          <button type="button" style={TABLE_TOOL_BUTTON_STYLE} onClick={showAllColumns}>
+            Mostra tutte le colonne
           </button>
           <button
             type="button"
@@ -478,191 +553,207 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
             width: "100%",
             borderCollapse: "separate",
             borderSpacing: 0,
-            minWidth: showDoveDorme ? 1100 : 940,
+            minWidth: Math.max(520, visibleDataColumnCount * 170),
           }}
         >
           <thead>
             <tr>
-              <th align="left" style={HEADER_CELL_STYLE}>
-                <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort("guest")}>
-                  Ospite {sortArrow("guest")}
-                </button>
-              </th>
-              <th align="left" style={HEADER_CELL_STYLE}>
-                <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort("struttura")}>
-                  Struttura {sortArrow("struttura")}
-                </button>
-              </th>
-              <th align="left" style={HEADER_CELL_STYLE}>
-                <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort("stato")}>
-                  Stato {sortArrow("stato")}
-                </button>
-              </th>
-              {showDoveDorme ? (
+              {visibleColumns.guest ? (
                 <th align="left" style={HEADER_CELL_STYLE}>
-                  Dove dorme
+                  {renderColumnHeader("guest", "Ospite", "guest")}
                 </th>
               ) : null}
-              <th align="left" style={HEADER_CELL_STYLE}>
-                <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort("submitted_at")}>
-                  Inviato {sortArrow("submitted_at")}
-                </button>
-              </th>
-              <th align="left" style={HEADER_CELL_STYLE}>
-                <button type="button" style={TABLE_HEADER_BUTTON_STYLE} onClick={() => setSort("updated_at")}>
-                  Ultima modifica {sortArrow("updated_at")}
-                </button>
-              </th>
+              {visibleColumns.struttura ? (
+                <th align="left" style={HEADER_CELL_STYLE}>
+                  {renderColumnHeader("struttura", "Struttura", "struttura")}
+                </th>
+              ) : null}
+              {visibleColumns.stato ? (
+                <th align="left" style={HEADER_CELL_STYLE}>
+                  {renderColumnHeader("stato", "Stato", "stato")}
+                </th>
+              ) : null}
+              {visibleColumns.dove_dorme ? (
+                <th align="left" style={HEADER_CELL_STYLE}>
+                  {renderColumnHeader("dove_dorme", "Dove dorme")}
+                </th>
+              ) : null}
+              {visibleColumns.submitted_at ? (
+                <th align="left" style={HEADER_CELL_STYLE}>
+                  {renderColumnHeader("submitted_at", "Inviato", "submitted_at")}
+                </th>
+              ) : null}
+              {visibleColumns.updated_at ? (
+                <th align="left" style={HEADER_CELL_STYLE}>
+                  {renderColumnHeader("updated_at", "Ultima modifica", "updated_at")}
+                </th>
+              ) : null}
             </tr>
             <tr>
-              <th align="left" style={CELL_STYLE}>
-                <input
-                  value={filters.guest}
-                  onChange={(event) => setFilters((prev) => ({ ...prev, guest: event.target.value }))}
-                  placeholder="Filtra ospite"
-                  style={FILTER_INPUT_STYLE}
-                />
-              </th>
-              <th align="left" style={CELL_STYLE}>
-                <details>
-                  <summary style={{ cursor: "pointer", fontSize: 13, userSelect: "none" }}>
-                    {filters.strutture.length > 0
-                      ? `Strutture (${filters.strutture.length})`
-                      : "Tutte le strutture"}
-                  </summary>
-                  <div
-                    style={{
-                      marginTop: 8,
-                      border: "1px solid var(--border)",
-                      borderRadius: 8,
-                      padding: 8,
-                      display: "grid",
-                      gap: 6,
-                      maxHeight: 180,
-                      overflowY: "auto",
-                      background: "var(--panel)",
-                    }}
+              {visibleColumns.guest ? (
+                <th align="left" style={CELL_STYLE}>
+                  <input
+                    value={filters.guest}
+                    onChange={(event) => setFilters((prev) => ({ ...prev, guest: event.target.value }))}
+                    placeholder="Filtra ospite"
+                    style={FILTER_INPUT_STYLE}
+                  />
+                </th>
+              ) : null}
+              {visibleColumns.struttura ? (
+                <th align="left" style={CELL_STYLE}>
+                  <details>
+                    <summary style={{ cursor: "pointer", fontSize: 13, userSelect: "none" }}>
+                      {filters.strutture.length > 0
+                        ? `Strutture (${filters.strutture.length})`
+                        : "Tutte le strutture"}
+                    </summary>
+                    <div
+                      style={{
+                        marginTop: 8,
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        padding: 8,
+                        display: "grid",
+                        gap: 6,
+                        maxHeight: 180,
+                        overflowY: "auto",
+                        background: "var(--panel)",
+                      }}
+                    >
+                      {allStructures.map((struttura) => {
+                        const checked = filters.strutture.includes(struttura);
+                        return (
+                          <label
+                            key={struttura}
+                            style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(event) => {
+                                const isChecked = event.target.checked;
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  strutture: isChecked
+                                    ? [...prev.strutture, struttura]
+                                    : prev.strutture.filter((value) => value !== struttura),
+                                }));
+                              }}
+                            />
+                            <span>{struttura}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </details>
+                </th>
+              ) : null}
+              {visibleColumns.stato ? (
+                <th align="left" style={CELL_STYLE}>
+                  <select
+                    value={filters.stato}
+                    onChange={(event) => setFilters((prev) => ({ ...prev, stato: event.target.value }))}
+                    style={FILTER_INPUT_STYLE}
                   >
-                    {allStructures.map((struttura) => {
-                      const checked = filters.strutture.includes(struttura);
-                      return (
-                        <label
-                          key={struttura}
-                          style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(event) => {
-                              const isChecked = event.target.checked;
-                              setFilters((prev) => ({
-                                ...prev,
-                                strutture: isChecked
-                                  ? [...prev.strutture, struttura]
-                                  : prev.strutture.filter((value) => value !== struttura),
-                              }));
-                            }}
-                          />
-                          <span>{struttura}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </details>
-              </th>
-              <th align="left" style={CELL_STYLE}>
-                <select
-                  value={filters.stato}
-                  onChange={(event) => setFilters((prev) => ({ ...prev, stato: event.target.value }))}
-                  style={FILTER_INPUT_STYLE}
-                >
-                  <option value="">Tutti</option>
-                  <option value="In accoglienza">In accoglienza</option>
-                  <option value="Uscito">Uscito</option>
-                  <option value="Deceduto">Deceduto</option>
-                </select>
-              </th>
-              {showDoveDorme ? <th align="left" style={CELL_STYLE} /> : null}
-              <th align="left" style={CELL_STYLE}>
-                <input
-                  value={filters.submitted_at}
-                  onChange={(event) =>
-                    setFilters((prev) => ({ ...prev, submitted_at: event.target.value }))
-                  }
-                  placeholder="Filtra inviato"
-                  style={FILTER_INPUT_STYLE}
-                />
-              </th>
-              <th align="left" style={CELL_STYLE}>
-                <input
-                  value={filters.updated_at}
-                  onChange={(event) =>
-                    setFilters((prev) => ({ ...prev, updated_at: event.target.value }))
-                  }
-                  placeholder="Filtra modifica"
-                  style={FILTER_INPUT_STYLE}
-                />
-              </th>
+                    <option value="">Tutti</option>
+                    <option value="In accoglienza">In accoglienza</option>
+                    <option value="Uscito">Uscito</option>
+                    <option value="Deceduto">Deceduto</option>
+                  </select>
+                </th>
+              ) : null}
+              {visibleColumns.dove_dorme ? <th align="left" style={CELL_STYLE} /> : null}
+              {visibleColumns.submitted_at ? (
+                <th align="left" style={CELL_STYLE}>
+                  <input
+                    value={filters.submitted_at}
+                    onChange={(event) =>
+                      setFilters((prev) => ({ ...prev, submitted_at: event.target.value }))
+                    }
+                    placeholder="Filtra inviato"
+                    style={FILTER_INPUT_STYLE}
+                  />
+                </th>
+              ) : null}
+              {visibleColumns.updated_at ? (
+                <th align="left" style={CELL_STYLE}>
+                  <input
+                    value={filters.updated_at}
+                    onChange={(event) =>
+                      setFilters((prev) => ({ ...prev, updated_at: event.target.value }))
+                    }
+                    placeholder="Filtra modifica"
+                    style={FILTER_INPUT_STYLE}
+                  />
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
             {filteredAndSorted.map((item) => (
               <tr key={item.row.id}>
-                <td style={CELL_STYLE}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Link
-                      href={`/dashboard/submissions/${item.row.id}`}
-                      aria-label={`Apri dettaglio di ${item.guest}`}
-                      title={`Dettaglio: ${item.guest}`}
-                      style={EDIT_LINK_STYLE}
-                    >
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        width="15"
-                        height="15"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                {visibleColumns.guest ? (
+                  <td style={CELL_STYLE}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Link
+                        href={`/dashboard/submissions/${item.row.id}`}
+                        aria-label={`Apri dettaglio di ${item.guest}`}
+                        title={`Dettaglio: ${item.guest}`}
+                        style={EDIT_LINK_STYLE}
                       >
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                      </svg>
-                    </Link>
-                    <strong>{item.guest}</strong>
-                    {item.needsUpdate ? (
-                      <span
-                        style={STALE_UPDATE_BADGE_STYLE}
-                        title="Nessun aggiornamento da più di sei mesi"
-                      >
-                        {STALE_UPDATE_BADGE_LABEL}
-                      </span>
-                    ) : null}
-                    {item.needsCompletion ? (
-                      <span
-                        style={INCOMPLETE_DATA_BADGE_STYLE}
-                        title="Record con dati obbligatori mancanti"
-                      >
-                        Da completare
-                      </span>
-                    ) : null}
-                    {item.needsPrivacy ? (
-                      <span
-                        style={PRIVACY_BADGE_STYLE}
-                        title="Privacy non ancora acquisita"
-                      >
-                        Privacy
-                      </span>
-                    ) : null}
-                  </div>
-                </td>
-                <td style={CELL_STYLE}>{item.struttura}</td>
-                <td style={CELL_STYLE}>{item.stato}</td>
-                {showDoveDorme ? <td style={CELL_STYLE}>{item.doveDorme}</td> : null}
-                <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.submittedAtLabel}</td>
-                <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.updatedAtLabel}</td>
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                          width="15"
+                          height="15"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                        </svg>
+                      </Link>
+                      <strong>{item.guest}</strong>
+                      {item.needsUpdate ? (
+                        <span
+                          style={STALE_UPDATE_BADGE_STYLE}
+                          title="Nessun aggiornamento da più di sei mesi"
+                        >
+                          {STALE_UPDATE_BADGE_LABEL}
+                        </span>
+                      ) : null}
+                      {item.needsCompletion ? (
+                        <span
+                          style={INCOMPLETE_DATA_BADGE_STYLE}
+                          title="Record con dati obbligatori mancanti"
+                        >
+                          Da completare
+                        </span>
+                      ) : null}
+                      {item.needsPrivacy ? (
+                        <span
+                          style={PRIVACY_BADGE_STYLE}
+                          title="Privacy non ancora acquisita"
+                        >
+                          Privacy
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                ) : null}
+                {visibleColumns.struttura ? <td style={CELL_STYLE}>{item.struttura}</td> : null}
+                {visibleColumns.stato ? <td style={CELL_STYLE}>{item.stato}</td> : null}
+                {visibleColumns.dove_dorme ? <td style={CELL_STYLE}>{item.doveDorme}</td> : null}
+                {visibleColumns.submitted_at ? (
+                  <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.submittedAtLabel}</td>
+                ) : null}
+                {visibleColumns.updated_at ? (
+                  <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.updatedAtLabel}</td>
+                ) : null}
               </tr>
             ))}
           </tbody>
