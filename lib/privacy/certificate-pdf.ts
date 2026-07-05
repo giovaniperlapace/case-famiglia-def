@@ -15,7 +15,14 @@ const TITLE_FONT_SIZE = 16;
 const MAX_CHARS_PER_LINE = 88;
 
 function escapeXmlText(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
+  return value
+    .normalize("NFC")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[^\x00-\xFF]/g, "?")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function wrapText(text: string, maxChars = MAX_CHARS_PER_LINE): string[] {
@@ -117,7 +124,7 @@ export function createPrivacyCertificatePdf(guest: PrivacyCertificateGuest): Buf
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
     `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>`,
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
     contentObject,
   ];
 
