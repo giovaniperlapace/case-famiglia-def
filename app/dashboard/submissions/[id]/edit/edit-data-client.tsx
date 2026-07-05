@@ -57,6 +57,7 @@ type EditableGuestValues = {
   nome_della_persona: string | null;
   cognome: string | null;
   data_di_nascita: string | null;
+  data_uscita: string | null;
   data_decesso: string | null;
   luogo_di_nascita: string | null;
   sesso_della_persona: string | null;
@@ -171,6 +172,7 @@ function initForm(initialValues: EditableGuestValues): EditableForm {
     nome_della_persona: initialValues.nome_della_persona ?? "",
     cognome: initialValues.cognome ?? "",
     data_di_nascita: normalizeToIsoDate(initialValues.data_di_nascita ?? ""),
+    data_uscita: normalizeToIsoDate(initialValues.data_uscita ?? ""),
     data_decesso: normalizeToIsoDate(initialValues.data_decesso ?? ""),
     luogo_di_nascita: initialValues.luogo_di_nascita ?? "",
     sesso_della_persona: initialValues.sesso_della_persona ?? "",
@@ -388,6 +390,7 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
   );
   const needsChiEInContatto = form.siamo_ancora_in_contatto === "Sì";
   const needsDataDomandaCasaPopolare = form.ha_gia_fatto_domanda_di_casa_popolare === "Sì";
+  const canEditExitDate = initialValues.current_status === "USCITO";
   const canEditDeathDate = initialValues.current_status === "DECEDUTO";
 
   useEffect(() => {
@@ -407,6 +410,10 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
 
     if (form.data_ingresso && !isValidIsoDate(form.data_ingresso)) {
       return "Data ingresso non valida.";
+    }
+
+    if (canEditExitDate && !isValidIsoDate(form.data_uscita)) {
+      return "Data uscita non valida.";
     }
 
     if (canEditDeathDate && form.data_decesso && !isValidIsoDate(form.data_decesso)) {
@@ -664,6 +671,10 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
 
       if (canEditDeathDate) {
         payload.data_decesso = form.data_decesso;
+      }
+
+      if (canEditExitDate) {
+        payload.data_uscita = form.data_uscita;
       }
 
       if (shouldPreservePovertyCauses) {
@@ -998,6 +1009,24 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
           </label>
         </div>
       </div>
+
+      {canEditExitDate ? (
+        <div className="card" style={{ background: "rgba(15, 118, 110, 0.04)" }}>
+          <h2 style={{ marginTop: 0 }}>Dati uscita</h2>
+          <div style={sectionGridStyle}>
+            <label style={{ display: "grid", gap: 4 }}>
+              <span>Data uscita</span>
+              <input
+                type="date"
+                value={form.data_uscita}
+                lang="it-IT"
+                required
+                onChange={(e) => setField("data_uscita", e.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+      ) : null}
 
       {canEditDeathDate ? (
         <div className="card" style={{ background: "rgba(15, 118, 110, 0.04)" }}>

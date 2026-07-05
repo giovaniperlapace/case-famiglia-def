@@ -50,6 +50,7 @@ export default async function SubmissionEditPage({
           cognome: data.cognome,
           data_di_nascita: data.data_di_nascita,
           current_status: currentStatus,
+          data_uscita: data.data_uscita,
           data_decesso: data.data_decesso,
           luogo_di_nascita: data.luogo_di_nascita,
           sesso_della_persona: data.sesso_della_persona,

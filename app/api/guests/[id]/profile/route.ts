@@ -24,6 +24,7 @@ const ALLOWED_FIELDS = new Set([
   "nome_della_persona",
   "cognome",
   "data_di_nascita",
+  "data_uscita",
   "data_decesso",
   "luogo_di_nascita",
   "sesso_della_persona",
@@ -184,7 +185,7 @@ export async function PATCH(
     );
   }
 
-  if ("data_decesso" in patch) {
+  if ("data_uscita" in patch || "data_decesso" in patch) {
     const { data: guest, error: guestError } = await supabase
       .from("case_alloggio_submissions")
       .select("current_status,data_uscita,data_decesso,tipo_aggiornamento")
@@ -199,21 +200,37 @@ export async function PATCH(
       return NextResponse.json({ error: "Guest not found" }, { status: 404 });
     }
 
-    if (getCurrentStatus(guest) !== "DECEDUTO") {
+    const currentStatus = getCurrentStatus(guest);
+
+    if ("data_uscita" in patch && currentStatus !== "USCITO") {
+      return NextResponse.json(
+        { error: "La data uscita è modificabile solo per ospiti usciti." },
+        { status: 400 }
+      );
+    }
+
+    if ("data_uscita" in patch && (!patch.data_uscita || !isValidIsoDate(patch.data_uscita))) {
+      return NextResponse.json(
+        { error: "Data uscita non valida. Usa il formato aaaa-mm-gg." },
+        { status: 400 }
+      );
+    }
+
+    if ("data_decesso" in patch && currentStatus !== "DECEDUTO") {
       return NextResponse.json(
         { error: "La data decesso è modificabile solo per ospiti deceduti." },
         { status: 400 }
       );
     }
 
-    if (patch.data_decesso && !isValidIsoDate(patch.data_decesso)) {
+    if ("data_decesso" in patch && patch.data_decesso && !isValidIsoDate(patch.data_decesso)) {
       return NextResponse.json(
         { error: "Data decesso non valida. Usa il formato aaaa-mm-gg." },
         { status: 400 }
       );
     }
 
-    if (patch.data_decesso === "") {
+    if ("data_decesso" in patch && patch.data_decesso === "") {
       patch.data_decesso = null;
     }
   }
