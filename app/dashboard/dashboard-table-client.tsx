@@ -31,6 +31,7 @@ type SortKey =
   | "guest"
   | "struttura"
   | "stato"
+  | "data_ingresso"
   | "submitted_at"
   | "updated_at";
 
@@ -40,13 +41,21 @@ type Filters = {
   guest: string;
   strutture: string[];
   stato: string;
+  data_ingresso: string;
   submitted_at: string;
   updated_at: string;
 };
 
 type IncompleteFilter = "data_nascita" | "data_uscita" | "data_morte";
 type AttentionFilter = "" | "completion" | "update" | "privacy" | "privacy_collected";
-type ColumnKey = "guest" | "struttura" | "stato" | "dove_dorme" | "submitted_at" | "updated_at";
+type ColumnKey =
+  | "guest"
+  | "struttura"
+  | "stato"
+  | "dove_dorme"
+  | "data_ingresso"
+  | "submitted_at"
+  | "updated_at";
 
 type RowView = {
   row: SubmissionRow;
@@ -54,6 +63,8 @@ type RowView = {
   struttura: string;
   stato: string;
   doveDorme: string;
+  dataIngressoLabel: string;
+  dataIngressoTs: number;
   submittedAtLabel: string;
   updatedAtLabel: string;
   submittedAtTs: number;
@@ -74,6 +85,15 @@ function formatDateTime(value: string | null) {
   }).format(parsed);
 }
 
+function formatDate(value: string | null) {
+  if (!value) return "n/d";
+  const italianDate = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (italianDate) return value;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("it-IT", { dateStyle: "short" }).format(parsed);
+}
+
 function deriveGuestStatus(row: SubmissionRow) {
   const status = getCurrentStatus(row);
   if (status === "DECEDUTO") return "Deceduto";
@@ -83,6 +103,10 @@ function deriveGuestStatus(row: SubmissionRow) {
 
 function toTimestamp(value: string | null) {
   if (!value) return 0;
+  const italianDate = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (italianDate) {
+    return Date.UTC(Number(italianDate[3]), Number(italianDate[2]) - 1, Number(italianDate[1]));
+  }
   const ts = Date.parse(value);
   return Number.isNaN(ts) ? 0 : ts;
 }
@@ -256,6 +280,7 @@ const COLUMN_KEYS: ColumnKey[] = [
   "struttura",
   "stato",
   "dove_dorme",
+  "data_ingresso",
   "submitted_at",
   "updated_at",
 ];
@@ -265,6 +290,7 @@ const DEFAULT_VISIBLE_COLUMNS: Record<ColumnKey, boolean> = {
   struttura: true,
   stato: true,
   dove_dorme: false,
+  data_ingresso: false,
   submitted_at: true,
   updated_at: true,
 };
@@ -284,6 +310,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
     guest: "",
     strutture: strutturaParam ? [strutturaParam] : [],
     stato: getInitialStato(incompleteFilter) || getInitialStatoForAttention(initialAttentionFilter),
+    data_ingresso: "",
     submitted_at: "",
     updated_at: "",
   });
@@ -305,6 +332,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
           row.id;
         const submittedAtLabel = formatDateTime(row.submitted_at);
         const updatedAtLabel = formatDateTime(row.updated_at);
+        const dataIngressoLabel = formatDate(row.data_ingresso);
         const stato = deriveGuestStatus(row);
         return {
           row,
@@ -312,6 +340,8 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
           struttura: row.struttura ?? "n/d",
           stato,
           doveDorme: row.dove_dorme?.trim() || "n/d",
+          dataIngressoLabel,
+          dataIngressoTs: toTimestamp(row.data_ingresso),
           submittedAtLabel,
           updatedAtLabel,
           submittedAtTs: toTimestamp(row.submitted_at),
@@ -358,6 +388,14 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
         return false;
       }
       if (
+        filters.data_ingresso &&
+        !item.dataIngressoLabel
+          .toLowerCase()
+          .includes(filters.data_ingresso.trim().toLowerCase())
+      ) {
+        return false;
+      }
+      if (
         filters.submitted_at &&
         !item.submittedAtLabel
           .toLowerCase()
@@ -387,6 +425,9 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
       } else if (sortKey === "stato") {
         left = a.stato.toLowerCase();
         right = b.stato.toLowerCase();
+      } else if (sortKey === "data_ingresso") {
+        left = a.dataIngressoTs;
+        right = b.dataIngressoTs;
       } else if (sortKey === "submitted_at") {
         left = a.submittedAtTs;
         right = b.submittedAtTs;
@@ -409,7 +450,11 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
       return;
     }
     setSortKey(nextKey);
-    setSortDirection(nextKey === "submitted_at" || nextKey === "updated_at" ? "desc" : "asc");
+    setSortDirection(
+      nextKey === "data_ingresso" || nextKey === "submitted_at" || nextKey === "updated_at"
+        ? "desc"
+        : "asc"
+    );
   }
 
   function sortArrow(key: SortKey) {
@@ -427,6 +472,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
       struttura: true,
       stato: true,
       dove_dorme: true,
+      data_ingresso: true,
       submitted_at: true,
       updated_at: true,
     });
@@ -521,6 +567,7 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                 guest: "",
                 strutture: [],
                 stato: "",
+                data_ingresso: "",
                 submitted_at: "",
                 updated_at: "",
               });
@@ -576,6 +623,11 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
               {visibleColumns.dove_dorme ? (
                 <th align="left" style={HEADER_CELL_STYLE}>
                   {renderColumnHeader("dove_dorme", "Dove dorme")}
+                </th>
+              ) : null}
+              {visibleColumns.data_ingresso ? (
+                <th align="left" style={HEADER_CELL_STYLE}>
+                  {renderColumnHeader("data_ingresso", "Data ingresso", "data_ingresso")}
                 </th>
               ) : null}
               {visibleColumns.submitted_at ? (
@@ -664,6 +716,19 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                 </th>
               ) : null}
               {visibleColumns.dove_dorme ? <th align="left" style={CELL_STYLE} /> : null}
+              {visibleColumns.data_ingresso ? (
+                <th align="left" style={CELL_STYLE}>
+                  <input
+                    value={filters.data_ingresso}
+                    onChange={(event) =>
+                      setFilters((prev) => ({ ...prev, data_ingresso: event.target.value }))
+                    }
+                    placeholder="Filtra ingresso"
+                    aria-label="Filtra per data ingresso"
+                    style={FILTER_INPUT_STYLE}
+                  />
+                </th>
+              ) : null}
               {visibleColumns.submitted_at ? (
                 <th align="left" style={CELL_STYLE}>
                   <input
@@ -748,6 +813,9 @@ export default function DashboardTableClient({ rows }: { rows: SubmissionRow[] }
                 {visibleColumns.struttura ? <td style={CELL_STYLE}>{item.struttura}</td> : null}
                 {visibleColumns.stato ? <td style={CELL_STYLE}>{item.stato}</td> : null}
                 {visibleColumns.dove_dorme ? <td style={CELL_STYLE}>{item.doveDorme}</td> : null}
+                {visibleColumns.data_ingresso ? (
+                  <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.dataIngressoLabel}</td>
+                ) : null}
                 {visibleColumns.submitted_at ? (
                   <td style={{ ...CELL_STYLE, whiteSpace: "nowrap" }}>{item.submittedAtLabel}</td>
                 ) : null}
