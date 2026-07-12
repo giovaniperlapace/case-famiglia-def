@@ -10,6 +10,7 @@ type StatsRow = {
   id: string;
   struttura: string | null;
   submitted_at: string | null;
+  updated_at: string | null;
   current_status: string | null;
   data_di_nascita: string | null;
   data_ingresso: string | null;
@@ -151,7 +152,7 @@ export default async function AdminStatisticsPage() {
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
-      "id,struttura,submitted_at,current_status,data_di_nascita,data_ingresso,data_uscita,data_decesso,data_ultimo_contatto,tipo_aggiornamento"
+      "id,struttura,submitted_at,updated_at,current_status,data_di_nascita,data_ingresso,data_uscita,data_decesso,data_ultimo_contatto,tipo_aggiornamento"
     );
 
   const rows = (data ?? []) as StatsRow[];

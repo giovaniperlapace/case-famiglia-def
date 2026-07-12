@@ -63,6 +63,21 @@ test("latest follow-up contact wins over older status dates", () => {
   );
 });
 
+test("a recent saved profile update clears the stale badge", () => {
+  assert.equal(
+    needsUpdateBadge(
+      {
+        current_status: "USCITO",
+        data_uscita: "2025-01-01",
+        data_ultimo_contatto: "2025-02-01",
+        updated_at: "2026-06-01T10:00:00.000Z",
+      },
+      NOW
+    ),
+    false
+  );
+});
+
 test("needsUpdateBadge falls back to entry or submission date for exited guests when no later event exists", () => {
   assert.equal(
     needsUpdateBadge(

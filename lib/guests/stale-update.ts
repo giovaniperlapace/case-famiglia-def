@@ -5,6 +5,7 @@ export const STALE_UPDATE_BADGE_LABEL = "Da aggiornare";
 export type GuestUpdateDateSource = {
   current_status?: string | null;
   submitted_at?: string | null;
+  updated_at?: string | null;
   data_ingresso?: string | null;
   data_uscita?: string | null;
   data_decesso?: string | null;
@@ -30,6 +31,7 @@ function toValidDate(value: string | null | undefined): Date | null {
 export function getLatestGuestUpdateDate(source: GuestUpdateDateSource): string | null {
   const status = getCurrentStatus(source);
   const candidates = [
+    source.updated_at,
     source.data_ultimo_contatto,
     status === "USCITO" ? source.data_uscita : null,
     status === "DECEDUTO" ? source.data_decesso : null,

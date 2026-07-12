@@ -669,6 +669,11 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
         nazionalita: normalizeNationality(form.nazionalita) ?? form.nazionalita.trim(),
       };
 
+      // These status-specific fields are present in the local form even when their
+      // sections are hidden. Do not send them unless the guest has the matching status.
+      delete payload.data_uscita;
+      delete payload.data_decesso;
+
       if (canEditDeathDate) {
         payload.data_decesso = form.data_decesso;
       }
