@@ -28,6 +28,7 @@ import {
   isTrueLike,
   normalizeToIsoDate,
   normalizeYesNo,
+  parseAllowedSelections,
   splitCsvValues,
   toggleCsvOption,
   toggleExclusiveCsvOption,
@@ -210,7 +211,7 @@ function initForm(initialValues: StatusUpdateInitialValues): StatusUpdateFormVal
   const pathologySelections = normalizeExclusiveSelections(PATOLOGIE_OPTIONS, [
     ...PATOLOGIE_FLAG_MAPPING.filter(({ key }) => isTrueLike(initialValues[key])).map(({ option }) => option),
     initialValues.patologie_altro && initialValues.patologie_altro !== "false" ? "Altro" : "",
-    ...splitCsvValues(initialValues.patologie),
+    ...(parseAllowedSelections(initialValues.patologie, PATOLOGIE_OPTIONS) ?? []),
   ]);
 
   return {
@@ -303,7 +304,7 @@ export default function StatusUpdateClient({
     form.al_momento_dell_uscita_ha_i_seguenti_documenti
   );
   const selectedDependencies = splitCsvValues(form.dipendenze);
-  const selectedPathologies = splitCsvValues(form.patologie);
+  const selectedPathologies = parseAllowedSelections(form.patologie, PATOLOGIE_OPTIONS) ?? [];
 
   const isExitDeath = updateType === "exit" && form.causa_uscita === DECESSO_CAUSA_USCITA;
   const hasFollowUpIncome = form.ha_un_reddito === "Sì";

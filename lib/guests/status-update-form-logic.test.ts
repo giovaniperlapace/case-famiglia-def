@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildStatusUpdatePayload,
+  parseAllowedSelections,
+  toggleExclusiveCsvOption,
   validateStatusUpdateForm,
   type StatusUpdateFormValues,
 } from "./status-update-form-logic.ts";
+import { PATOLOGIE_OPTIONS } from "./status-update-options.ts";
 
 function baseForm(): StatusUpdateFormValues {
   return {
@@ -119,6 +122,26 @@ test("exclusive 'Nessuna' logic matches edit behavior for dipendenze/patologie",
     patologie: "Nessuna, Neoplasie",
   };
   assert.equal(validateStatusUpdateForm("followup", invalidPathologies), "Patologie non valido.");
+});
+
+test("pathology selections preserve labels containing commas", () => {
+  const commaOptions = [
+    "Malattie endocrine, nutrizionali e metaboliche",
+    "Malformazioni congenite, deformità e anomalie cromosomiche",
+    "Traumi, avvelenamenti e alcune altre conseguenze di cause esterne",
+  ];
+
+  let value = "";
+  for (const option of commaOptions) {
+    value = toggleExclusiveCsvOption(value, option, PATOLOGIE_OPTIONS);
+  }
+
+  assert.deepEqual(parseAllowedSelections(value, PATOLOGIE_OPTIONS), commaOptions);
+  assert.equal(validateStatusUpdateForm("followup", { ...baseForm(), patologie: value }), null);
+  assert.equal(
+    buildStatusUpdatePayload("followup", { ...baseForm(), patologie: value }, "Villetta").patologie,
+    value
+  );
 });
 
 test("payload builder preserves historical update semantics by update type", () => {

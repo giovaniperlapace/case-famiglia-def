@@ -99,12 +99,11 @@ function normalizeAllowedSelections(
   options: readonly string[],
   fieldLabel: string
 ): string[] {
-  const selected = orderedUnique(options, splitCsvValues(value));
-  const raw = splitCsvValues(value);
-  if (raw.some((item) => !isAllowed(options, item))) {
+  const parsed = parseAllowedSelections(value, options);
+  if (!parsed) {
     throw new Error(`${fieldLabel} non valido.`);
   }
-  return selected;
+  return orderedUnique(options, parsed);
 }
 
 function normalizeOptionalSelections(value: string, options: readonly string[], fieldLabel: string): string[] {
@@ -118,6 +117,44 @@ export function splitCsvValues(value: string | null | undefined): string[] {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+export function parseAllowedSelections(
+  value: string | null | undefined,
+  options: readonly string[]
+): string[] | null {
+  const input = value?.trim() ?? "";
+  if (!input) return [];
+
+  const memo = new Map<number, string[] | null>();
+  function parseFrom(position: number): string[] | null {
+    if (position === input.length) return [];
+    if (memo.has(position)) return memo.get(position) ?? null;
+
+    for (const option of options) {
+      if (!input.startsWith(option, position)) continue;
+      const optionEnd = position + option.length;
+      if (optionEnd === input.length) {
+        const result = [option];
+        memo.set(position, result);
+        return result;
+      }
+
+      const separator = input.slice(optionEnd).match(/^,\s*/)?.[0];
+      if (!separator) continue;
+      const remainder = parseFrom(optionEnd + separator.length);
+      if (remainder) {
+        const result = [option, ...remainder];
+        memo.set(position, result);
+        return result;
+      }
+    }
+
+    memo.set(position, null);
+    return null;
+  }
+
+  return parseFrom(0);
 }
 
 export function toCsvValue(values: readonly string[]): string {
@@ -208,7 +245,8 @@ export function toggleExclusiveCsvOption(
   exclusiveOption: string = NONE_LABEL
 ): string {
   if (!isAllowed(options, option)) return currentValue;
-  const current = splitCsvValues(currentValue);
+  const current = parseAllowedSelections(currentValue, options);
+  if (!current) return currentValue;
   const hasOption = current.includes(option);
 
   let next: string[];

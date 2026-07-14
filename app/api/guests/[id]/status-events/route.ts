@@ -5,6 +5,7 @@ import {
   isValidIsoDate,
   normalizeExclusiveSelections,
   normalizeIncomeSelections,
+  parseAllowedSelections,
   summarizeSelections,
   toCsvValue,
 } from "@/lib/guests/status-update-form-logic";
@@ -99,15 +100,11 @@ function normalizeCsvSelections(value: unknown, options: readonly string[], fiel
 }
 
 function normalizeSelections(value: string, options: readonly string[], fieldLabel: string): string[] {
-  const selected = value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-  const unique = options.filter((option) => selected.includes(option));
-  if (selected.some((item) => !options.includes(item))) {
+  const selected = parseAllowedSelections(value, options);
+  if (!selected) {
     throw new Error(`${fieldLabel} non valido`);
   }
-  return unique;
+  return options.filter((option) => selected.includes(option));
 }
 
 function toIsoDateStart(date: string): string {
