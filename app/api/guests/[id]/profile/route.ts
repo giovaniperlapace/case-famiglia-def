@@ -3,6 +3,11 @@ import { getServerAuthContext } from "@/lib/auth/server";
 import { normalizePersonName } from "@/lib/guests/name-normalization";
 import { normalizeNationality } from "@/lib/guests/nationalities";
 import { POVERTA_OPTIONS } from "@/lib/guests/profile-edit-values";
+import {
+  REFERRAL_SOURCE_OPTIONS,
+  REFERRAL_SOURCE_OTHER,
+  normalizeReferralSource,
+} from "@/lib/guests/referral-sources";
 import { getCurrentStatus } from "@/lib/guests/status";
 import {
   DOCUMENTI_OPTIONS,
@@ -30,6 +35,8 @@ const ALLOWED_FIELDS = new Set([
   "sesso_della_persona",
   "nazionalita",
   "contatto_della_persona",
+  "segnalato_da",
+  "segnalato_da_altro",
   "data_ingresso",
   "e_gia_stato_in_un_accoglienza_della_comunita",
   "al_momento_dell_ingresso_ha_un_reddito",
@@ -77,6 +84,7 @@ const ALLOWED_FIELDS = new Set([
   "patologie_nessuna",
   "patologie_altro",
   "patologia_psichiatrica",
+  "note_libere",
 ]);
 
 const SEX_OPTIONS = new Set(["Uomo", "Donna", "Altro"]);
@@ -176,6 +184,27 @@ export async function PATCH(
 
   if ("cognome" in patch) {
     patch.cognome = normalizePersonName(patch.cognome);
+  }
+
+  if (patch.segnalato_da) {
+    const normalizedReferralSource = normalizeReferralSource(patch.segnalato_da);
+    if (!normalizedReferralSource || !isAllowed(REFERRAL_SOURCE_OPTIONS, normalizedReferralSource)) {
+      return NextResponse.json({ error: "Fonte della segnalazione non valida." }, { status: 400 });
+    }
+    patch.segnalato_da = normalizedReferralSource;
+  }
+
+  if ("segnalato_da" in patch || "segnalato_da_altro" in patch) {
+    if (patch.segnalato_da === REFERRAL_SOURCE_OTHER) {
+      if (!patch.segnalato_da_altro) {
+        return NextResponse.json(
+          { error: "Specifica chi ha segnalato la persona quando selezioni Altro..." },
+          { status: 400 }
+        );
+      }
+    } else {
+      patch.segnalato_da_altro = null;
+    }
   }
 
   if (patch.data_di_nascita && !isValidItalianDate(patch.data_di_nascita)) {

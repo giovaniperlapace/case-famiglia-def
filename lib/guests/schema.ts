@@ -13,7 +13,10 @@ export type GuestProfileFieldKey =
   | "luogo_di_nascita"
   | "sesso_della_persona"
   | "nazionalita"
-  | "contatto_della_persona";
+  | "contatto_della_persona"
+  | "segnalato_da"
+  | "segnalato_da_altro"
+  | "note_libere";
 
 export const GUEST_PROFILE_FIELDS: Array<{ key: GuestProfileFieldKey; label: string }> = [
   { key: "nome_della_persona", label: "Nome" },
@@ -23,6 +26,9 @@ export const GUEST_PROFILE_FIELDS: Array<{ key: GuestProfileFieldKey; label: str
   { key: "sesso_della_persona", label: "Sesso" },
   { key: "nazionalita", label: "Nazionalità" },
   { key: "contatto_della_persona", label: "Contatto persona" },
+  { key: "segnalato_da", label: "Segnalato da" },
+  { key: "segnalato_da_altro", label: "Dettaglio segnalazione" },
+  { key: "note_libere", label: "Note libere" },
 ];
 
 export type FollowUpFieldKey =

@@ -7,7 +7,7 @@ import {
   validateStatusUpdateForm,
   type StatusUpdateFormValues,
 } from "./status-update-form-logic.ts";
-import { PATOLOGIE_OPTIONS } from "./status-update-options.ts";
+import { CAUSA_USCITA_OPTIONS, PATOLOGIE_OPTIONS } from "./status-update-options.ts";
 
 function baseForm(): StatusUpdateFormValues {
   return {
@@ -107,6 +107,37 @@ test("Deceduto is not a valid follow-up housing option", () => {
   assert.equal(
     validateStatusUpdateForm("followup", { ...baseForm(), dove_dorme: "Deceduto" }),
     "Dove dorme non valido."
+  );
+});
+
+test("therapeutic community is accepted as an exit cause", () => {
+  const exitToTherapeuticCommunity = {
+    ...baseForm(),
+    data_uscita: "2026-07-31",
+    causa_uscita: "Accoglienza in comunità terapeutica",
+  };
+
+  assert.equal(validateStatusUpdateForm("exit", exitToTherapeuticCommunity), null);
+  assert.equal(
+    buildStatusUpdatePayload("exit", exitToTherapeuticCommunity, "San Calisto").causa_uscita,
+    "Accoglienza in comunità terapeutica"
+  );
+});
+
+test("exit causes end with Other, motivated departure, and renamed voluntary departure", () => {
+  assert.deepEqual(CAUSA_USCITA_OPTIONS.slice(-3), [
+    "Altro",
+    "Allontanamento motivato",
+    "Allontanamento volontario - destinazione ignota",
+  ]);
+
+  assert.equal(
+    validateStatusUpdateForm("exit", {
+      ...baseForm(),
+      data_uscita: "2026-08-01",
+      causa_uscita: "Allontanamento volontario - destinazione ignota",
+    }),
+    null
   );
 });
 

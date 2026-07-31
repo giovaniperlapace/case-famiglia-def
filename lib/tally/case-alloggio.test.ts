@@ -123,3 +123,60 @@ test("external criminal sentence entry fields are mapped from Tally labels", () 
   assert.equal(mapped.row.esecuzione_penale_esterna_data_inizio, "01/06/2026");
   assert.equal(mapped.row.esecuzione_penale_esterna_data_fine, "30/09/2026");
 });
+
+test("free notes are mapped from the Tally Note field", () => {
+  const payload = {
+    data: {
+      submissionId: "sub_9",
+      fields: [{ label: "Note", value: "Informazione utile sulla persona" }],
+    },
+  };
+
+  const mapped = mapCaseAlloggioSubmission(payload);
+  assert.equal(mapped.row.note_libere, "Informazione utile sulla persona");
+});
+
+test("referral source and its free-text detail are mapped from Tally", () => {
+  const payload = {
+    data: {
+      submissionId: "sub_10",
+      fields: [
+        { label: "Da chi è stata segnalata la persona?", value: "Altro..." },
+        { label: "Specificare chi ha segnalato la persona", value: "Associazione locale" },
+      ],
+    },
+  };
+
+  const mapped = mapCaseAlloggioSubmission(payload);
+  assert.equal(mapped.row.segnalato_da, "Altro...");
+  assert.equal(mapped.row.segnalato_da_altro, "Associazione locale");
+});
+
+test("referral detail is discarded when the selected source is not Other", () => {
+  const mapped = mapCaseAlloggioSubmission({
+    data: {
+      submissionId: "sub_11",
+      fields: [
+        { label: "Da chi è stata segnalata la persona?", value: "Servizi sociali ASL" },
+        { label: "Specificare chi ha segnalato la persona", value: "Dato non pertinente" },
+      ],
+    },
+  });
+
+  assert.equal(mapped.row.segnalato_da, "Servizi sociali ASL");
+  assert.equal(mapped.row.segnalato_da_altro, null);
+});
+
+test("legacy voluntary departure is normalized to the renamed exit cause", () => {
+  const mapped = mapCaseAlloggioSubmission({
+    data: {
+      submissionId: "sub_12",
+      fields: [{ label: "Causa uscita", value: "Allontanamento volontario" }],
+    },
+  });
+
+  assert.equal(
+    mapped.row.causa_uscita,
+    "Allontanamento volontario - destinazione ignota"
+  );
+});

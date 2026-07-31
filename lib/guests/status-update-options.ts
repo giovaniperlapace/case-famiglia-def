@@ -35,15 +35,31 @@ export const CAUSA_USCITA_OPTIONS = [
   "Convivenza reperita tramite Comunità",
   "Trasferimento in altra accoglienza Comunità",
   "Accoglienza in altri organismi",
-  "Allontanamento volontario",
-  "Allontanamento motivato",
   "Ricovero in struttura sanitaria",
   "Ritorno in famiglia",
   "Ritorno in Paese di provenienza",
   "Ritorno per strada",
   "Alloggio precario",
   "Decesso",
+  "Accoglienza in comunità terapeutica",
+  "Altro",
+  "Allontanamento motivato",
+  "Allontanamento volontario - destinazione ignota",
 ] as const;
+
+export const LEGACY_ALLONTANAMENTO_VOLONTARIO = "Allontanamento volontario";
+export const ALLONTANAMENTO_VOLONTARIO_DESTINAZIONE_IGNOTA =
+  "Allontanamento volontario - destinazione ignota";
+
+export function normalizeCausaUscita(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed === LEGACY_ALLONTANAMENTO_VOLONTARIO) {
+    return ALLONTANAMENTO_VOLONTARIO_DESTINAZIONE_IGNOTA;
+  }
+  return trimmed;
+}
 
 export const CAUSA_DECESSO_OPTIONS = [
   "Neoplasia",

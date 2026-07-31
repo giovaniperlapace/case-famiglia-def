@@ -20,6 +20,10 @@ import {
   normalizeDoveDormeOption,
   normalizePatologiaPsichiatrica,
 } from "@/lib/guests/status-update-options";
+import {
+  REFERRAL_SOURCE_OPTIONS,
+  REFERRAL_SOURCE_OTHER,
+} from "@/lib/guests/referral-sources";
 
 const SEX_OPTIONS = ["Uomo", "Donna", "Altro"] as const;
 const YES_NO_OPTIONS = ["Sì", "No"] as const;
@@ -63,6 +67,8 @@ type EditableGuestValues = {
   sesso_della_persona: string | null;
   nazionalita: string | null;
   contatto_della_persona: string | null;
+  segnalato_da: string | null;
+  segnalato_da_altro: string | null;
   data_ingresso: string | null;
   e_gia_stato_in_un_accoglienza_della_comunita: string | null;
   al_momento_dell_ingresso_ha_un_reddito: string | null;
@@ -110,6 +116,7 @@ type EditableGuestValues = {
   patologie_nessuna: string | null;
   patologie_altro: string | null;
   patologia_psichiatrica: string | null;
+  note_libere: string | null;
 };
 
 type EditDataClientProps = {
@@ -178,6 +185,8 @@ function initForm(initialValues: EditableGuestValues): EditableForm {
     sesso_della_persona: initialValues.sesso_della_persona ?? "",
     nazionalita: normalizeNationality(initialValues.nazionalita) ?? initialValues.nazionalita ?? "",
     contatto_della_persona: toE164(initialValues.contatto_della_persona ?? "") || "+39",
+    segnalato_da: initialValues.segnalato_da ?? "",
+    segnalato_da_altro: initialValues.segnalato_da_altro ?? "",
     data_ingresso: normalizeToIsoDate(initialValues.data_ingresso ?? ""),
     e_gia_stato_in_un_accoglienza_della_comunita: normalizeYesNo(
       initialValues.e_gia_stato_in_un_accoglienza_della_comunita ?? ""
@@ -276,6 +285,7 @@ function initForm(initialValues: EditableGuestValues): EditableForm {
     patologie_nessuna: normalizeYesNo(initialValues.patologie_nessuna ?? ""),
     patologie_altro: initialValues.patologie_altro ?? "",
     patologia_psichiatrica: normalizePatologiaPsichiatrica(initialValues.patologia_psichiatrica) ?? "",
+    note_libere: initialValues.note_libere ?? "",
   };
 }
 
@@ -775,6 +785,45 @@ export default function EditDataClient({ guestId, initialValues }: EditDataClien
               onChange={(e) => setField("contatto_della_persona", e.target.value)}
               pattern="\+\d{6,15}"
               placeholder="+3932678766"
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 4 }}>
+            <span>Da chi è stata segnalata la persona?</span>
+            <select
+              value={form.segnalato_da}
+              onChange={(e) => {
+                const value = e.target.value;
+                setField("segnalato_da", value);
+                if (value !== REFERRAL_SOURCE_OTHER) setField("segnalato_da_altro", "");
+              }}
+            >
+              <option value="">Seleziona...</option>
+              {REFERRAL_SOURCE_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </label>
+
+          {form.segnalato_da === REFERRAL_SOURCE_OTHER ? (
+            <label style={{ display: "grid", gap: 4 }}>
+              <span>Specificare chi ha segnalato la persona</span>
+              <input
+                value={form.segnalato_da_altro}
+                onChange={(e) => setField("segnalato_da_altro", e.target.value)}
+                placeholder="Nome dell'individuo o dell'istituzione"
+                required
+              />
+            </label>
+          ) : null}
+
+          <label style={{ display: "grid", gap: 4, gridColumn: "1 / -1" }}>
+            <span>Note libere</span>
+            <textarea
+              value={form.note_libere}
+              onChange={(e) => setField("note_libere", e.target.value)}
+              rows={5}
+              placeholder="Inserisci eventuali informazioni utili sulla persona"
             />
           </label>
         </div>

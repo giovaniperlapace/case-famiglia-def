@@ -1,7 +1,12 @@
 import { extractTallyAnswers, normalizeText, type TallyPayload } from "@/lib/tally/webhook";
 import { normalizePersonName } from "@/lib/guests/name-normalization";
 import { normalizeNationality } from "@/lib/guests/nationalities";
-import { DOCUMENTI_OPTIONS, normalizeDoveDormeOption } from "@/lib/guests/status-update-options";
+import {
+  DOCUMENTI_OPTIONS,
+  normalizeCausaUscita,
+  normalizeDoveDormeOption,
+} from "@/lib/guests/status-update-options";
+import { REFERRAL_SOURCE_OTHER, normalizeReferralSource } from "@/lib/guests/referral-sources";
 
 export const CASE_ALLOGGIO_HEADER_TO_COLUMN = {
   id_utente: "id_utente",
@@ -22,6 +27,9 @@ export const CASE_ALLOGGIO_HEADER_TO_COLUMN = {
   "Sesso della persona": "sesso_della_persona",
   Nazionalità: "nazionalita",
   "Contatto della persona": "contatto_della_persona",
+  "Da chi è stata segnalata la persona?": "segnalato_da",
+  "Da chi è stata segnalata la persona": "segnalato_da",
+  "Specificare chi ha segnalato la persona": "segnalato_da_altro",
   Registrazione: "registrazione",
   "Tipo aggiornamento": "tipo_aggiornamento",
   "Data ingresso": "data_ingresso",
@@ -104,6 +112,8 @@ export const CASE_ALLOGGIO_HEADER_TO_COLUMN = {
   "Patologie (Nessuna)": "patologie_nessuna",
   "Patologie (Altro)": "patologie_altro",
   "Patologia psichiatrica": "patologia_psichiatrica",
+  Note: "note_libere",
+  "Note libere": "note_libere",
 } as const;
 
 function normalizeHeader(value: string): string {
@@ -248,6 +258,9 @@ export function mapCaseAlloggioSubmission(payload: TallyPayload) {
   row.nazionalita = normalizeNationality(row.nazionalita) ?? row.nazionalita;
   row.dove_dorme = normalizeDoveDormeOption(row.dove_dorme);
   row.dove_dormiva = normalizeDoveDormeOption(row.dove_dormiva);
+  row.causa_uscita = normalizeCausaUscita(row.causa_uscita);
+  row.segnalato_da = normalizeReferralSource(row.segnalato_da) ?? row.segnalato_da;
+  if (row.segnalato_da !== REFERRAL_SOURCE_OTHER) row.segnalato_da_altro = null;
 
   const documentiIngressoFromFlags = DOCUMENTI_OPTIONS.filter((option) => {
     const normalizedHeader = normalizeHeader(

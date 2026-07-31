@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getIncompleteDataFlags } from "@/lib/guests/incomplete-data";
 import { getCurrentStatus } from "@/lib/guests/status";
+import { normalizeDoveDormeOption } from "@/lib/guests/status-update-options";
 import { needsUpdateBadge } from "@/lib/guests/stale-update";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,9 @@ type StatsRow = {
   data_ingresso: string | null;
   data_uscita: string | null;
   data_decesso: string | null;
+  causa_decesso: string | null;
   data_ultimo_contatto: string | null;
+  dove_dorme: string | null;
   tipo_aggiornamento: string | null;
 };
 
@@ -88,6 +91,11 @@ function formatDays(value: number | null) {
   }).format(value);
 }
 
+function normalizeDeathCause(value: string | null | undefined) {
+  const normalized = value?.trim().replace(/\s+/g, " ").replace(/\(\s+/g, "(").replace(/\s+\)/g, ")");
+  return normalized || "Causa non indicata";
+}
+
 function incompleteHref(casa: string | null, filter: string) {
   const params = new URLSearchParams({ dati_incompleti: filter });
   if (casa) params.set("struttura", casa);
@@ -152,7 +160,7 @@ export default async function AdminStatisticsPage() {
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
-      "id,struttura,submitted_at,updated_at,current_status,data_di_nascita,data_ingresso,data_uscita,data_decesso,data_ultimo_contatto,tipo_aggiornamento"
+      "id,struttura,submitted_at,updated_at,current_status,data_di_nascita,data_ingresso,data_uscita,data_decesso,causa_decesso,data_ultimo_contatto,dove_dorme,tipo_aggiornamento"
     );
 
   const rows = (data ?? []) as StatsRow[];
@@ -175,6 +183,13 @@ export default async function AdminStatisticsPage() {
   const grouped = new Map<string, { inAccoglienza: number; storico: number }>();
   const incompleteGrouped = new Map<string, IncompleteCounts>();
   const durationGrouped = new Map<string, { exited: number[]; inAccoglienza: number[] }>();
+  const deathCauseCounts = new Map<string, number>();
+  const exitedHousingCounts = new Map<string, number>();
+  const statusCounts = {
+    inAccoglienza: 0,
+    uscitiVivi: 0,
+    uscitiMorti: 0,
+  };
   const now = new Date();
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -195,6 +210,7 @@ export default async function AdminStatisticsPage() {
 
     if (status === "IN_ACCOGLIENZA") {
       prev.inAccoglienza += 1;
+      statusCounts.inAccoglienza += 1;
       if ((privacyDocumentCounts.get(row.id) ?? 0) > 0) {
         incomplete.privacyCollected += 1;
       } else {
@@ -206,6 +222,15 @@ export default async function AdminStatisticsPage() {
       }
     } else {
       prev.storico += 1;
+      if (status === "USCITO") {
+        statusCounts.uscitiVivi += 1;
+        const housing = normalizeDoveDormeOption(row.dove_dorme) ?? "Dato non indicato";
+        exitedHousingCounts.set(housing, (exitedHousingCounts.get(housing) ?? 0) + 1);
+      } else {
+        statusCounts.uscitiMorti += 1;
+        const deathCause = normalizeDeathCause(row.causa_decesso);
+        deathCauseCounts.set(deathCause, (deathCauseCounts.get(deathCause) ?? 0) + 1);
+      }
     }
 
     if (status === "USCITO") {
@@ -289,6 +314,24 @@ export default async function AdminStatisticsPage() {
     }),
     { inAccoglienza: 0, storico: 0 }
   );
+  const statusTotal =
+    statusCounts.inAccoglienza + statusCounts.uscitiVivi + statusCounts.uscitiMorti;
+  const statusChartItems = [
+    { label: "In accoglienza", count: statusCounts.inAccoglienza, color: "#2563eb" },
+    { label: "Usciti vivi", count: statusCounts.uscitiVivi, color: "#0f766e" },
+    { label: "Usciti morti", count: statusCounts.uscitiMorti, color: "#64748b" },
+  ].map((item) => ({
+    ...item,
+    percentage: statusTotal > 0 ? (item.count / statusTotal) * 100 : 0,
+  }));
+  const deathCauseItems = Array.from(deathCauseCounts.entries())
+    .map(([cause, count]) => ({ cause, count }))
+    .sort((a, b) => b.count - a.count || a.cause.localeCompare(b.cause, "it-IT"));
+  const maxDeathCauseCount = Math.max(1, ...deathCauseItems.map((item) => item.count));
+  const exitedHousingItems = Array.from(exitedHousingCounts.entries())
+    .map(([housing, count]) => ({ housing, count }))
+    .sort((a, b) => b.count - a.count || a.housing.localeCompare(b.housing, "it-IT"));
+  const maxExitedHousingCount = Math.max(1, ...exitedHousingItems.map((item) => item.count));
   const incompleteTotals = incompleteItems.reduce(
     (acc, item) => ({
       missingBirthDate: acc.missingBirthDate + item.missingBirthDate,
@@ -389,6 +432,213 @@ export default async function AdminStatisticsPage() {
                 </tr>
               </tbody>
             </table>
+          </div>
+        ) : null}
+      </div>
+      <div className="card" style={{ marginBottom: "1rem", maxWidth: 900 }}>
+        <h2 style={{ marginTop: 0, marginBottom: "0.35rem" }}>Stato delle persone</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Distribuzione sul totale di {statusTotal} persone. Gli usciti vivi e gli usciti morti
+          sono conteggiati separatamente in base allo stato corrente.
+        </p>
+
+        {error ? <p style={{ color: "var(--danger)" }}>{error.message}</p> : null}
+
+        {!error && statusTotal === 0 ? (
+          <p className="muted" style={{ marginBottom: 0 }}>
+            Nessun dato disponibile.
+          </p>
+        ) : null}
+
+        {!error && statusTotal > 0 ? (
+          <>
+            <div
+              role="img"
+              aria-label={statusChartItems
+                .map((item) => `${item.label}: ${item.count}`)
+                .join(", ")}
+              style={{
+                display: "flex",
+                width: "100%",
+                height: 42,
+                overflow: "hidden",
+                borderRadius: 8,
+                background: "#eef2f7",
+                margin: "1rem 0",
+              }}
+            >
+              {statusChartItems.map((item) =>
+                item.count > 0 ? (
+                  <div
+                    key={item.label}
+                    title={`${item.label}: ${item.count} (${item.percentage.toLocaleString("it-IT", {
+                      maximumFractionDigits: 1,
+                    })}%)`}
+                    style={{
+                      width: `${item.percentage}%`,
+                      height: "100%",
+                      background: item.color,
+                    }}
+                  />
+                ) : null
+              )}
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 12,
+              }}
+            >
+              {statusChartItems.map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    padding: "0.7rem 0.8rem",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--muted)" }}>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 3,
+                        background: item.color,
+                        display: "inline-block",
+                        flex: "0 0 auto",
+                      }}
+                    />
+                    {item.label}
+                  </div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 700, marginTop: 4 }}>
+                    {item.count}
+                  </div>
+                  <div className="muted" style={{ fontSize: "0.85rem" }}>
+                    {item.percentage.toLocaleString("it-IT", { maximumFractionDigits: 1 })}% del totale
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </div>
+      <div className="card" style={{ marginBottom: "1rem", maxWidth: 900 }}>
+        <h2 style={{ marginTop: 0, marginBottom: "0.35rem" }}>Cause di decesso</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Cause registrate per tutte le {statusCounts.uscitiMorti} persone decedute.
+        </p>
+
+        {error ? <p style={{ color: "var(--danger)" }}>{error.message}</p> : null}
+
+        {!error && deathCauseItems.length === 0 ? (
+          <p className="muted" style={{ marginBottom: 0 }}>
+            Nessun decesso registrato.
+          </p>
+        ) : null}
+
+        {!error && deathCauseItems.length > 0 ? (
+          <div style={{ display: "grid", gap: 12, marginTop: "1rem", overflowX: "auto", paddingBottom: 4 }}>
+            {deathCauseItems.map((item) => {
+              const percentage =
+                statusCounts.uscitiMorti > 0 ? (item.count / statusCounts.uscitiMorti) * 100 : 0;
+
+              return (
+                <div
+                  key={item.cause}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(150px, 230px) minmax(120px, 1fr) 92px",
+                    gap: 10,
+                    alignItems: "center",
+                    minWidth: 520,
+                  }}
+                >
+                  <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{item.cause}</div>
+                  <div
+                    aria-hidden="true"
+                    style={{ height: 22, background: "#eef2f7", borderRadius: 5, overflow: "hidden" }}
+                  >
+                    <div
+                      style={{
+                        width: `${(item.count / maxDeathCauseCount) * 100}%`,
+                        height: "100%",
+                        minWidth: 3,
+                        background: "#64748b",
+                        borderRadius: 5,
+                      }}
+                    />
+                  </div>
+                  <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    <strong>{item.count}</strong>{" "}
+                    <span className="muted" style={{ fontSize: "0.82rem" }}>
+                      ({percentage.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%)
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+      <div className="card" style={{ marginBottom: "1rem", maxWidth: 900 }}>
+        <h2 style={{ marginTop: 0, marginBottom: "0.35rem" }}>Dove dormono gli usciti vivi</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Situazione abitativa attuale registrata per tutte le {statusCounts.uscitiVivi} persone
+          uscite vive. “Dato non indicato” e “Non lo sappiamo” restano categorie distinte.
+        </p>
+
+        {error ? <p style={{ color: "var(--danger)" }}>{error.message}</p> : null}
+
+        {!error && exitedHousingItems.length === 0 ? (
+          <p className="muted" style={{ marginBottom: 0 }}>
+            Nessuna persona uscita viva registrata.
+          </p>
+        ) : null}
+
+        {!error && exitedHousingItems.length > 0 ? (
+          <div style={{ display: "grid", gap: 12, marginTop: "1rem", overflowX: "auto", paddingBottom: 4 }}>
+            {exitedHousingItems.map((item) => {
+              const percentage =
+                statusCounts.uscitiVivi > 0 ? (item.count / statusCounts.uscitiVivi) * 100 : 0;
+
+              return (
+                <div
+                  key={item.housing}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(170px, 250px) minmax(120px, 1fr) 92px",
+                    gap: 10,
+                    alignItems: "center",
+                    minWidth: 540,
+                  }}
+                >
+                  <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{item.housing}</div>
+                  <div
+                    aria-hidden="true"
+                    style={{ height: 22, background: "#eef2f7", borderRadius: 5, overflow: "hidden" }}
+                  >
+                    <div
+                      style={{
+                        width: `${(item.count / maxExitedHousingCount) * 100}%`,
+                        height: "100%",
+                        minWidth: 3,
+                        background: "#0f766e",
+                        borderRadius: 5,
+                      }}
+                    />
+                  </div>
+                  <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    <strong>{item.count}</strong>{" "}
+                    <span className="muted" style={{ fontSize: "0.82rem" }}>
+                      ({percentage.toLocaleString("it-IT", { maximumFractionDigits: 1 })}%)
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : null}
       </div>

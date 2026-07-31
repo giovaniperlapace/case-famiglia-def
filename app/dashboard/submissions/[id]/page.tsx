@@ -5,6 +5,7 @@ import { getGuestTimeline, type GuestTimelineEvent } from "@/lib/guests/server";
 import { GUEST_STATUS_LABEL, type GuestStatus } from "@/lib/guests/schema";
 import { hasIncompleteData } from "@/lib/guests/incomplete-data";
 import { getCurrentStatus } from "@/lib/guests/status";
+import { normalizeCausaUscita } from "@/lib/guests/status-update-options";
 import { STALE_UPDATE_BADGE_LABEL, needsUpdateBadge } from "@/lib/guests/stale-update";
 import DeleteGuestButton from "./delete-guest-button";
 import ModificaAggiornaHelp from "./modifica-aggiorna-help";
@@ -27,6 +28,8 @@ type SubmissionDetailRow = {
   sesso_della_persona: string | null;
   nazionalita: string | null;
   contatto_della_persona: string | null;
+  segnalato_da: string | null;
+  segnalato_da_altro: string | null;
   data_ingresso: string | null;
   e_gia_stato_in_un_accoglienza_della_comunita: string | null;
   al_momento_dell_ingresso_ha_un_reddito: string | null;
@@ -82,6 +85,7 @@ type SubmissionDetailRow = {
   patologie_nessuna: string | null;
   patologie_altro: string | null;
   patologia_psichiatrica: string | null;
+  note_libere: string | null;
 };
 
 type FieldDef = {
@@ -101,6 +105,10 @@ function formatValue(value: string | null | undefined): string {
     return `${day}/${month}/${year}`;
   }
   return trimmed;
+}
+
+function formatExitCause(value: string | null | undefined): string {
+  return formatValue(normalizeCausaUscita(value));
 }
 
 function formatTimelineDate(value: string | null | undefined): string {
@@ -331,7 +339,7 @@ export default async function SubmissionDetailPage({
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
-      "id,submission_id,submitted_at,updated_at,current_status,current_status_at,struttura,nome_della_persona,cognome,data_di_nascita,luogo_di_nascita,sesso_della_persona,nazionalita,contatto_della_persona,data_ingresso,e_gia_stato_in_un_accoglienza_della_comunita,al_momento_dell_ingresso_ha_un_reddito,tipo_di_reddito,tipo_di_reddito_pensione,tipo_di_reddito_invalidita,tipo_di_reddito_reddito_di_inclusione,tipo_di_reddito_reddito_da_lavoro,tipo_di_lavoro,al_momento_dell_ingresso_ha_residenza,dove_dormiva,principale_causa_poverta,in_esecuzione_penale_esterna,esecuzione_penale_esterna_data_inizio,esecuzione_penale_esterna_data_fine,al_momento_dell_ingresso_ha_i_seguenti_documenti,data_uscita,causa_uscita,data_decesso,causa_decesso,al_momento_dell_uscita_ha_i_seguenti_documenti,al_momento_dell_uscita_ha_residenza,al_momento_dell_uscita_ha_un_reddito,siamo_ancora_in_contatto,chi_e_in_contatto,ha_i_requisiti_per_fare_la_domanda_di_casa_popolare,ha_gia_fatto_domanda_di_casa_popolare,data_domanda_casa_popolare,data_ultimo_contatto,dove_dorme,dipendenze,dipendenze_alcolismo,dipendenze_sostanze,dipendenze_ludopatia,dipendenze_nessuna,patologie,patologie_malattie_infettive_e_parassitarie,patologie_neoplasie_tumori,patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123,patologie_malattie_endocrine_nutrizionali_e_metaboliche,patologie_disturbi_psichici_e_comportamentali,patologie_malattie_del_sistema_nervoso,patologie_malattie_dell_occhio_e_degli_annessi_oculari,patologie_malattie_dell_orecchio_e_del_processo_mastoideo,patologie_malattie_del_sistema_circolatorio,patologie_malattie_del_sistema_respiratorio,patologie_malattie_dell_apparato_digerente,patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo,patologie_malattie_del_sistema_muscoloscheletrico_e_del_55e101,patologie_malattie_dell_apparato_genito_urinario,patologie_malformazioni_congenite_deformita_e_anomalie_c_84cf9a,patologie_traumi_avvelenamenti_e_alcune_altre_conseguenz_85ac11,patologie_nessuna,patologie_altro,patologia_psichiatrica"
+      "id,submission_id,submitted_at,updated_at,current_status,current_status_at,struttura,nome_della_persona,cognome,data_di_nascita,luogo_di_nascita,sesso_della_persona,nazionalita,contatto_della_persona,segnalato_da,segnalato_da_altro,data_ingresso,e_gia_stato_in_un_accoglienza_della_comunita,al_momento_dell_ingresso_ha_un_reddito,tipo_di_reddito,tipo_di_reddito_pensione,tipo_di_reddito_invalidita,tipo_di_reddito_reddito_di_inclusione,tipo_di_reddito_reddito_da_lavoro,tipo_di_lavoro,al_momento_dell_ingresso_ha_residenza,dove_dormiva,principale_causa_poverta,in_esecuzione_penale_esterna,esecuzione_penale_esterna_data_inizio,esecuzione_penale_esterna_data_fine,al_momento_dell_ingresso_ha_i_seguenti_documenti,data_uscita,causa_uscita,data_decesso,causa_decesso,al_momento_dell_uscita_ha_i_seguenti_documenti,al_momento_dell_uscita_ha_residenza,al_momento_dell_uscita_ha_un_reddito,siamo_ancora_in_contatto,chi_e_in_contatto,ha_i_requisiti_per_fare_la_domanda_di_casa_popolare,ha_gia_fatto_domanda_di_casa_popolare,data_domanda_casa_popolare,data_ultimo_contatto,dove_dorme,dipendenze,dipendenze_alcolismo,dipendenze_sostanze,dipendenze_ludopatia,dipendenze_nessuna,patologie,patologie_malattie_infettive_e_parassitarie,patologie_neoplasie_tumori,patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123,patologie_malattie_endocrine_nutrizionali_e_metaboliche,patologie_disturbi_psichici_e_comportamentali,patologie_malattie_del_sistema_nervoso,patologie_malattie_dell_occhio_e_degli_annessi_oculari,patologie_malattie_dell_orecchio_e_del_processo_mastoideo,patologie_malattie_del_sistema_circolatorio,patologie_malattie_del_sistema_respiratorio,patologie_malattie_dell_apparato_digerente,patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo,patologie_malattie_del_sistema_muscoloscheletrico_e_del_55e101,patologie_malattie_dell_apparato_genito_urinario,patologie_malformazioni_congenite_deformita_e_anomalie_c_84cf9a,patologie_traumi_avvelenamenti_e_alcune_altre_conseguenz_85ac11,patologie_nessuna,patologie_altro,patologia_psichiatrica,note_libere"
     )
     .eq("id", id)
     .maybeSingle();
@@ -536,12 +544,23 @@ export default async function SubmissionDetailPage({
         </div>
       </div>
 
+      <div className="card" style={{ marginTop: "1rem" }}>
+        <h2 style={{ marginTop: 0, marginBottom: "0.75rem" }}>Note libere</h2>
+        <p style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+          {formatValue(row.note_libere)}
+        </p>
+      </div>
+
       <Section title="Dati personali" data={row} fields={PERSONAL_FIELDS} />
       <Section
         title="Situazione all'ingresso"
         data={row}
         fields={[
           { key: "data_ingresso", label: "Data ingresso" },
+          { key: "segnalato_da", label: "Segnalato da" },
+          ...(row.segnalato_da_altro
+            ? [{ key: "segnalato_da_altro" as const, label: "Dettaglio segnalazione" }]
+            : []),
           {
             key: "e_gia_stato_in_un_accoglienza_della_comunita",
             label: "Già stato in accoglienza Comunità",
@@ -578,7 +597,11 @@ export default async function SubmissionDetailPage({
 
       {showUscitaSection ? (
         <>
-          <Section title="Dati di uscita e contatti successivi" data={row} fields={USCITA_FIELDS} />
+          <Section
+            title="Dati di uscita e contatti successivi"
+            data={{ ...row, causa_uscita: formatExitCause(row.causa_uscita) }}
+            fields={USCITA_FIELDS}
+          />
           <div className="card" style={{ marginTop: "1rem" }}>
             <h2 style={{ marginTop: 0, marginBottom: "0.75rem" }}>Reddito all&apos;uscita</h2>
             <div
@@ -662,7 +685,7 @@ export default async function SubmissionDetailPage({
                     ? `Trasferimento verso ${payload.struttura_trasferimento}`
                     : null;
               const fallbackSummary =
-                (payload.causa_uscita as string | undefined) ||
+                normalizeCausaUscita(payload.causa_uscita as string | undefined) ||
                 (payload.causa_decesso as string | undefined) ||
                 (payload.note as string | undefined) ||
                 "Nessun dettaglio sintetico";

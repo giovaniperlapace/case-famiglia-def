@@ -17,7 +17,7 @@ export default async function SubmissionEditPage({
   const { data, error } = await supabase
     .from("case_alloggio_submissions")
     .select(
-      "id,submission_id,current_status,data_uscita,data_decesso,tipo_aggiornamento,nome_della_persona,cognome,data_di_nascita,luogo_di_nascita,sesso_della_persona,nazionalita,contatto_della_persona,data_ingresso,e_gia_stato_in_un_accoglienza_della_comunita,al_momento_dell_ingresso_ha_un_reddito,tipo_di_reddito,tipo_di_reddito_pensione,tipo_di_reddito_invalidita,tipo_di_reddito_reddito_di_inclusione,tipo_di_reddito_reddito_da_lavoro,tipo_di_lavoro,al_momento_dell_ingresso_ha_residenza,dove_dormiva,principale_causa_poverta,in_esecuzione_penale_esterna,esecuzione_penale_esterna_data_inizio,esecuzione_penale_esterna_data_fine,al_momento_dell_ingresso_ha_i_seguenti_documenti,al_momento_dell_uscita_ha_i_seguenti_documenti,siamo_ancora_in_contatto,chi_e_in_contatto,ha_i_requisiti_per_fare_la_domanda_di_casa_popolare,ha_gia_fatto_domanda_di_casa_popolare,data_domanda_casa_popolare,dipendenze,dipendenze_alcolismo,dipendenze_sostanze,dipendenze_ludopatia,dipendenze_nessuna,patologie,patologie_malattie_infettive_e_parassitarie,patologie_neoplasie_tumori,patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123,patologie_malattie_endocrine_nutrizionali_e_metaboliche,patologie_disturbi_psichici_e_comportamentali,patologie_malattie_del_sistema_nervoso,patologie_malattie_dell_occhio_e_degli_annessi_oculari,patologie_malattie_dell_orecchio_e_del_processo_mastoideo,patologie_malattie_del_sistema_circolatorio,patologie_malattie_del_sistema_respiratorio,patologie_malattie_dell_apparato_digerente,patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo,patologie_malattie_del_sistema_muscoloscheletrico_e_del_55e101,patologie_malattie_dell_apparato_genito_urinario,patologie_malformazioni_congenite_deformita_e_anomalie_c_84cf9a,patologie_traumi_avvelenamenti_e_alcune_altre_conseguenz_85ac11,patologie_nessuna,patologie_altro,patologia_psichiatrica,struttura,updated_at"
+      "id,submission_id,current_status,data_uscita,data_decesso,tipo_aggiornamento,nome_della_persona,cognome,data_di_nascita,luogo_di_nascita,sesso_della_persona,nazionalita,contatto_della_persona,segnalato_da,segnalato_da_altro,data_ingresso,e_gia_stato_in_un_accoglienza_della_comunita,al_momento_dell_ingresso_ha_un_reddito,tipo_di_reddito,tipo_di_reddito_pensione,tipo_di_reddito_invalidita,tipo_di_reddito_reddito_di_inclusione,tipo_di_reddito_reddito_da_lavoro,tipo_di_lavoro,al_momento_dell_ingresso_ha_residenza,dove_dormiva,principale_causa_poverta,in_esecuzione_penale_esterna,esecuzione_penale_esterna_data_inizio,esecuzione_penale_esterna_data_fine,al_momento_dell_ingresso_ha_i_seguenti_documenti,al_momento_dell_uscita_ha_i_seguenti_documenti,siamo_ancora_in_contatto,chi_e_in_contatto,ha_i_requisiti_per_fare_la_domanda_di_casa_popolare,ha_gia_fatto_domanda_di_casa_popolare,data_domanda_casa_popolare,dipendenze,dipendenze_alcolismo,dipendenze_sostanze,dipendenze_ludopatia,dipendenze_nessuna,patologie,patologie_malattie_infettive_e_parassitarie,patologie_neoplasie_tumori,patologie_malattie_del_sangue_e_degli_organi_ematopoieti_0e7123,patologie_malattie_endocrine_nutrizionali_e_metaboliche,patologie_disturbi_psichici_e_comportamentali,patologie_malattie_del_sistema_nervoso,patologie_malattie_dell_occhio_e_degli_annessi_oculari,patologie_malattie_dell_orecchio_e_del_processo_mastoideo,patologie_malattie_del_sistema_circolatorio,patologie_malattie_del_sistema_respiratorio,patologie_malattie_dell_apparato_digerente,patologie_malattie_della_pelle_e_del_tessuto_sottocutaneo,patologie_malattie_del_sistema_muscoloscheletrico_e_del_55e101,patologie_malattie_dell_apparato_genito_urinario,patologie_malformazioni_congenite_deformita_e_anomalie_c_84cf9a,patologie_traumi_avvelenamenti_e_alcune_altre_conseguenz_85ac11,patologie_nessuna,patologie_altro,patologia_psichiatrica,note_libere,struttura,updated_at"
     )
     .eq("id", id)
     .maybeSingle();
@@ -56,6 +56,8 @@ export default async function SubmissionEditPage({
           sesso_della_persona: data.sesso_della_persona,
           nazionalita: data.nazionalita,
           contatto_della_persona: data.contatto_della_persona,
+          segnalato_da: data.segnalato_da,
+          segnalato_da_altro: data.segnalato_da_altro,
           data_ingresso: data.data_ingresso,
           e_gia_stato_in_un_accoglienza_della_comunita:
             data.e_gia_stato_in_un_accoglienza_della_comunita,
@@ -122,6 +124,7 @@ export default async function SubmissionEditPage({
           patologie_nessuna: data.patologie_nessuna,
           patologie_altro: data.patologie_altro,
           patologia_psichiatrica: data.patologia_psichiatrica,
+          note_libere: data.note_libere,
         }}
       />
     </main>
