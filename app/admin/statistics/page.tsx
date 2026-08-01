@@ -157,21 +157,20 @@ function AttentionCountLink({
 export default async function AdminStatisticsPage() {
   const supabase = await createSupabaseServerClient();
 
-  const { data, error } = await supabase
-    .from("case_alloggio_submissions")
-    .select(
-      "id,struttura,submitted_at,updated_at,current_status,data_di_nascita,data_ingresso,data_uscita,data_decesso,causa_decesso,data_ultimo_contatto,dove_dorme,tipo_aggiornamento"
-    );
+  const [guestResult, privacyResult] = await Promise.all([
+    supabase
+      .from("case_alloggio_submissions")
+      .select(
+        "id,struttura,submitted_at,updated_at,current_status,data_di_nascita,data_ingresso,data_uscita,data_decesso,causa_decesso,data_ultimo_contatto,dove_dorme,tipo_aggiornamento"
+      ),
+    supabase.from("guest_privacy_documents").select("guest_id"),
+  ]);
+
+  const { data, error: guestError } = guestResult;
+  const { data: privacyDocuments, error: privacyError } = privacyResult;
+  const error = guestError ?? privacyError;
 
   const rows = (data ?? []) as StatsRow[];
-  const rowIds = rows.map((row) => row.id);
-  const { data: privacyDocuments } =
-    rowIds.length > 0
-      ? await supabase
-          .from("guest_privacy_documents")
-          .select("guest_id")
-          .in("guest_id", rowIds)
-      : { data: [] };
   const privacyDocumentCounts = new Map<string, number>();
 
   for (const document of (privacyDocuments ?? []) as Array<{ guest_id: string }>) {

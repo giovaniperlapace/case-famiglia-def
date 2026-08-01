@@ -14,22 +14,21 @@ function deriveGuestStatus(row: SubmissionRow) {
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
 
-  const { data, error } = await supabase
-    .from("case_alloggio_submissions")
-    .select(
-      "id,submission_id,submitted_at,updated_at,current_status,struttura,nome_della_persona,cognome,tipo_aggiornamento,data_di_nascita,data_ingresso,data_uscita,data_decesso,data_ultimo_contatto,dove_dorme"
-    )
-    .order("submitted_at", { ascending: false });
+  const [guestResult, privacyResult] = await Promise.all([
+    supabase
+      .from("case_alloggio_submissions")
+      .select(
+        "id,submission_id,submitted_at,updated_at,current_status,struttura,nome_della_persona,cognome,tipo_aggiornamento,data_di_nascita,data_ingresso,data_uscita,data_decesso,data_ultimo_contatto,dove_dorme"
+      )
+      .order("submitted_at", { ascending: false }),
+    supabase.from("guest_privacy_documents").select("guest_id"),
+  ]);
+
+  const { data, error } = guestResult;
+  const { data: privacyDocuments, error: privacyError } = privacyResult;
+  const queryError = error ?? privacyError;
 
   const baseRows = (data ?? []) as Omit<SubmissionRow, "privacy_documents_count">[];
-  const rowIds = baseRows.map((row) => row.id);
-  const { data: privacyDocuments } =
-    rowIds.length > 0
-      ? await supabase
-          .from("guest_privacy_documents")
-          .select("guest_id")
-          .in("guest_id", rowIds)
-      : { data: [] };
   const privacyDocumentCounts = new Map<string, number>();
 
   for (const document of (privacyDocuments ?? []) as Array<{ guest_id: string }>) {
@@ -90,11 +89,13 @@ export default async function DashboardPage() {
           <h2 style={{ margin: 0 }}>Elenco coordinatore</h2>
         </div>
 
-        {error ? <p style={{ color: "var(--danger)" }}>{error.message}</p> : null}
+        {queryError ? <p style={{ color: "var(--danger)" }}>{queryError.message}</p> : null}
 
-        {rows.length === 0 ? <p className="muted">Nessuna persona visibile per le tue strutture.</p> : null}
+        {!queryError && rows.length === 0 ? (
+          <p className="muted">Nessuna persona visibile per le tue strutture.</p>
+        ) : null}
 
-        {rows.length > 0 ? <DashboardTableClient rows={rows} /> : null}
+        {!queryError && rows.length > 0 ? <DashboardTableClient rows={rows} /> : null}
       </div>
     </>
   );
